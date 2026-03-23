@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard งบประมาณ คณะเทคโนโลยี มข.</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap');
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --bg:#f0f2f5;--card:#fff;--text:#1a1a2e;--muted:#6b7280;
+    --border:#e5e7eb;--accent:#16213e;--blue:#2563eb;--green:#059669;
+    --orange:#d97706;--red:#dc2626;--purple:#7c3aed;--teal:#0891b2;
+  }
+  body{font-family:'Sarabun',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+
+  /* Header */
+  .header{background:linear-gradient(135deg,#16213e 0%,#0f3460 60%,#533483 100%);padding:24px 32px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+  .header-left h1{font-size:22px;font-weight:700;color:#fff;letter-spacing:0.3px}
+  .header-left p{font-size:13px;color:rgba(255,255,255,0.65);margin-top:3px}
+  .header-right{display:flex;align-items:center;gap:10px}
+  .last-update{font-size:12px;color:rgba(255,255,255,0.55)}
+  .btn-refresh{background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.25);color:#fff;padding:8px 18px;border-radius:8px;font-family:'Sarabun',sans-serif;font-size:13px;cursor:pointer;transition:all .2s}
+  .btn-refresh:hover{background:rgba(255,255,255,0.25)}
+  .status-dot{width:8px;height:8px;border-radius:50%;background:#10b981;display:inline-block;margin-right:6px;animation:pulse 2s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+  /* Main */
+  .main{padding:24px 32px;max-width:1400px;margin:0 auto}
+
+  /* Loading */
+  .loading{text-align:center;padding:60px;color:var(--muted)}
+  .spinner{width:40px;height:40px;border:3px solid var(--border);border-top-color:var(--blue);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 16px}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .error-box{background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:16px 20px;color:#991b1b;margin-bottom:20px;font-size:14px}
+
+  /* KPI Grid */
+  .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:24px}
+  .kpi-card{background:var(--card);border-radius:12px;padding:18px 20px;border:1px solid var(--border);position:relative;overflow:hidden;transition:transform .2s,box-shadow .2s}
+  .kpi-card:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,0.08)}
+  .kpi-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px}
+  .kpi-card.blue::before{background:var(--blue)}
+  .kpi-card.green::before{background:var(--green)}
+  .kpi-card.orange::before{background:var(--orange)}
+  .kpi-card.purple::before{background:var(--purple)}
+  .kpi-card.teal::before{background:var(--teal)}
+  .kpi-card.red::before{background:var(--red)}
+  .kpi-label{font-size:12px;color:var(--muted);margin-bottom:8px;font-weight:500}
+  .kpi-value{font-size:26px;font-weight:700;color:var(--text);line-height:1}
+  .kpi-sub{font-size:11px;color:var(--muted);margin-top:6px}
+  .kpi-pct{font-size:12px;font-weight:600;padding:2px 8px;border-radius:20px;display:inline-block;margin-top:4px}
+  .pct-good{background:#d1fae5;color:#065f46}
+  .pct-warn{background:#fef3c7;color:#92400e}
+  .pct-bad{background:#fee2e2;color:#991b1b}
+
+  /* Section grid */
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px}
+  .grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:20px}
+  @media(max-width:900px){.grid-2,.grid-3{grid-template-columns:1fr}}
+
+  /* Cards */
+  .card{background:var(--card);border-radius:12px;padding:20px;border:1px solid var(--border)}
+  .card-title{font-size:14px;font-weight:600;color:var(--text);margin-bottom:16px;display:flex;align-items:center;gap:8px}
+  .card-title::before{content:'';width:4px;height:16px;border-radius:2px;background:var(--blue);display:inline-block}
+
+  /* Bar rows */
+  .bar-item{display:flex;align-items:center;gap:10px;margin-bottom:10px;font-size:13px}
+  .bar-label{color:var(--muted);width:90px;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:12px}
+  .bar-track{flex:1;height:10px;background:#f3f4f6;border-radius:5px;overflow:hidden}
+  .bar-fill{height:100%;border-radius:5px;transition:width .6s ease}
+  .bar-val{font-size:11px;color:var(--text);min-width:80px;text-align:right;font-weight:500}
+
+  /* Progress ring */
+  .progress-wrap{display:flex;align-items:center;justify-content:center;gap:24px;padding:8px 0}
+  .ring-container{position:relative;width:100px;height:100px}
+  .ring-label{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center}
+  .ring-pct{font-size:20px;font-weight:700;color:var(--text)}
+  .ring-sub{font-size:10px;color:var(--muted)}
+  .ring-info{font-size:13px}
+  .ring-info p{color:var(--muted);margin-bottom:4px;font-size:12px}
+  .ring-info strong{font-size:16px;font-weight:700;color:var(--text)}
+
+  /* Table */
+  .table-wrap{overflow-x:auto;margin-top:4px}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th{font-weight:600;color:var(--muted);text-align:left;padding:8px 10px;border-bottom:2px solid var(--border);font-size:12px;white-space:nowrap}
+  td{padding:8px 10px;border-bottom:1px solid #f9fafb;color:var(--text)}
+  tr:hover td{background:#f9fafb}
+  tr:last-child td{border-bottom:none}
+  .badge{font-size:11px;padding:3px 10px;border-radius:20px;font-weight:500;white-space:nowrap}
+  .b-ok{background:#d1fae5;color:#065f46}
+  .b-pend{background:#fef3c7;color:#92400e}
+  .b-none{background:#f3f4f6;color:#6b7280}
+  .b-loan{background:#ede9fe;color:#5b21b6}
+
+  /* Chart wrapper */
+  .chart-wrap{position:relative;width:100%}
+
+  /* Tabs */
+  .tabs{display:flex;gap:4px;margin-bottom:16px;border-bottom:1px solid var(--border);padding-bottom:0}
+  .tab{padding:8px 16px;font-size:13px;font-family:'Sarabun',sans-serif;cursor:pointer;border:none;background:none;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s}
+  .tab.active{color:var(--blue);border-bottom-color:var(--blue);font-weight:600}
+
+  /* Footer */
+  .footer{text-align:center;padding:20px;color:var(--muted);font-size:12px;border-top:1px solid var(--border);margin-top:8px}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <h1>📊 Dashboard งบประมาณ คณะเทคโนโลยี มข.</h1>
+    <p>ปีงบประมาณ 2568–2569 | <span class="status-dot"></span>Real-time จาก Google Sheets</p>
+  </div>
+  <div class="header-right">
+    <span class="last-update" id="last-update">-</span>
+    <button class="btn-refresh" onclick="loadAll()">⟳ รีเฟรช</button>
+  </div>
+</div>
+
+<div class="main">
+  <div id="app"><div class="loading"><div class="spinner"></div><p>กำลังดึงข้อมูลจาก Google Sheets...</p></div></div>
+</div>
+
+<div class="footer">คณะเทคโนโลยี มหาวิทยาลัยขอนแก่น | ข้อมูลอัพเดทอัตโนมัติจาก Google Sheets</div>
+
+<script>
+const SHEET_ID = '1tM_y7KOf2zNVDVBgadMDgdE3VQssWZmk4cDtiXWbkeE';
+const SHEETS = {
+  'โครงการ':        '1336310880',
+  'งบดำเนินงาน':    '0',
+  'งบบุคลากร':      '1792933779',
+  'กองทุนส่วนกลาง': '348547999',
+  'กองทุนส่วนงาน':  '851158176',
+  'งบแผ่นดิน':      '1872653181',
+  'งบกลางปี':       '385095302'
+};
+
+let allData = {};
+let activeCharts = {};
+
+function csvUrl(gid){
+  return `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${gid}&t=${Date.now()}`;
+}
+
+async function fetchCSV(gid){
+  const r = await fetch(csvUrl(gid));
+  if(!r.ok) throw new Error('HTTP '+r.status);
+  const text = await r.text();
+  return parseCSV(text);
+}
+
+function parseCSV(text){
+  const lines = text.split('\n');
+  return lines.map(line=>{
+    const cells=[];let cur='';let inQ=false;
+    for(let i=0;i<line.length;i++){
+      if(line[i]==='"'){inQ=!inQ;}
+      else if(line[i]===','&&!inQ){cells.push(cur.trim());cur='';}
+      else{cur+=line[i];}
+    }
+    cells.push(cur.trim());
+    return cells;
+  }).filter(r=>r.length>1);
+}
+
+function n(v){return parseFloat((v||'').toString().replace(/,/g,''))||0;}
+function fmt(v){
+  if(!v||isNaN(v))return'0';
+  if(Math.abs(v)>=1000000)return(v/1000000).toFixed(1)+'M';
+  if(Math.abs(v)>=1000)return(v/1000).toFixed(0)+'K';
+  return Math.round(v).toLocaleString('th-TH');
+}
+function fmtFull(v){return v?Math.round(v).toLocaleString('th-TH'):'0';}
+function pct(a,b){return b>0?Math.round(a/b*100):0;}
+function pctClass(p){return p>=70?'pct-good':p>=40?'pct-warn':'pct-bad';}
+
+function killChart(id){if(activeCharts[id]){activeCharts[id].destroy();delete activeCharts[id];}}
+
+async function loadAll(){
+  document.getElementById('last-update').textContent='กำลังโหลด...';
+  try{
+    const keys=Object.keys(SHEETS);
+    const results=await Promise.all(keys.map(k=>fetchCSV(SHEETS[k])));
+    keys.forEach((k,i)=>allData[k]=results[i]);
+    document.getElementById('last-update').textContent='อัพเดต '+new Date().toLocaleTimeString('th-TH');
+    render();
+  }catch(e){
+    document.getElementById('last-update').textContent='โหลดไม่สำเร็จ';
+    document.getElementById('app').innerHTML=`<div class="error-box">
+      <strong>ไม่สามารถดึงข้อมูลได้:</strong> ${e.message}<br>
+      <small>กรุณาตรวจสอบว่า Google Sheets ถูก Publish to web แล้ว และ Spreadsheet เปิด Public</small>
+    </div>`;
+  }
+}
+
+function render(){
+  const proj = allData['โครงการ']||[];
+  const op   = allData['งบดำเนินงาน']||[];
+  const sal  = allData['งบบุคลากร']||[];
+
+  // --- โครงการ stats ---
+  let pAppr=0,pDisb=0,pAmt=0;
+  const validProj=proj.slice(1).filter(r=>r[0]&&r[0].trim());
+  validProj.forEach(r=>{pAmt+=n(r[7]);pAppr+=n(r[9]);pDisb+=n(r[10]);});
+
+  // --- งบดำเนินงาน ---
+  let oAppr=0,oDisb=0;
+  const validOp=op.slice(1).filter(r=>r[0]&&r[0].trim());
+  validOp.forEach(r=>{oAppr+=n(r[8]);oDisb+=n(r[9]);});
+
+  // --- บุคลากร ---
+  let salTotal=0;
+  const validSal=sal.slice(1).filter(r=>r[0]&&r[0].trim());
+  validSal.forEach(r=>salTotal+=n(r[11]));
+
+  const pending=validProj.filter(r=>n(r[9])>0&&n(r[10])===0).length;
+  const disbN=validProj.filter(r=>n(r[10])>0).length;
+
+  // --- By division ---
+  const byDiv={};
+  validProj.forEach(r=>{
+    const k=(r[2]||'อื่นๆ').trim()||'อื่นๆ';
+    if(!byDiv[k])byDiv[k]={a:0,d:0};
+    byDiv[k].a+=n(r[9]);byDiv[k].d+=n(r[10]);
+  });
+  const divs=Object.entries(byDiv).sort((a,b)=>b[1].a-a[1].a).slice(0,7);
+
+  // --- By project type ---
+  const byType={};
+  validProj.forEach(r=>{
+    const k=(r[0]||'อื่นๆ').trim().slice(0,20);
+    if(!byType[k])byType[k]={a:0,d:0};
+    byType[k].a+=n(r[9]);byType[k].d+=n(r[10]);
+  });
+  const topTypes=Object.entries(byType).sort((a,b)=>b[1].a-a[1].a).slice(0,6);
+
+  // --- Monthly op ---
+  const monthOp={};
+  validOp.forEach(r=>{
+    const raw=r[4]||'';
+    const dt=new Date(raw);
+    if(isNaN(dt))return;
+    const mk=dt.getFullYear()+'-'+(dt.getMonth()+1).toString().padStart(2,'0');
+    if(!monthOp[mk])monthOp[mk]=0;
+    monthOp[mk]+=n(r[9]);
+  });
+  const mKeys=Object.keys(monthOp).sort().slice(-8);
+  const mNames=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+  const mLabels=mKeys.map(k=>mNames[parseInt(k.split('-')[1])-1]);
+  const mVals=mKeys.map(k=>monthOp[k]);
+
+  // --- Salary by type ---
+  const salByType={};
+  validSal.forEach(r=>{
+    const k=(r[2]||r[0]||'อื่นๆ').trim()||'อื่นๆ';
+    if(!salByType[k])salByType[k]=0;
+    salByType[k]+=n(r[11]);
+  });
+  const salTypes=Object.entries(salByType).sort((a,b)=>b[1]-a[1]);
+
+  // --- Monthly proj disbursed ---
+  const monthProj={};
+  validProj.forEach(r=>{
+    const raw=r[11]||r[5]||'';
+    const dt=new Date(raw);
+    if(isNaN(dt))return;
+    const mk=dt.getFullYear()+'-'+(dt.getMonth()+1).toString().padStart(2,'0');
+    if(!monthProj[mk])monthProj[mk]=0;
+    monthProj[mk]+=n(r[10]);
+  });
+  const mpKeys=Object.keys(monthProj).sort().slice(-8);
+  const mpVals=mpKeys.map(k=>monthProj[k]);
+  const mpLabels=mpKeys.map(k=>mNames[parseInt(k.split('-')[1])-1]);
+
+  // --- Recent projects ---
+  const recent=validProj.filter(r=>r[5]).sort((a,b)=>new Date(b[5])-new Date(a[5])).slice(0,8);
+
+  // --- Op by category ---
+  const byOpCat={};
+  validOp.forEach(r=>{
+    const k=(r[0]||'อื่นๆ').trim()||'อื่นๆ';
+    if(!byOpCat[k])byOpCat[k]={a:0,d:0};
+    byOpCat[k].a+=n(r[8]);byOpCat[k].d+=n(r[9]);
+  });
+  const topOp=Object.entries(byOpCat).sort((a,b)=>b[1].d-a[1].d).slice(0,5);
+
+  const divColors=['#2563eb','#059669','#d97706','#7c3aed','#0891b2','#dc2626','#db2777'];
+
+  document.getElementById('app').innerHTML=`
+  <!-- KPI -->
+  <div class="kpi-grid">
+    <div class="kpi-card blue">
+      <div class="kpi-label">งบโครงการ (ขออนุมัติ)</div>
+      <div class="kpi-value">${fmt(pAppr)}</div>
+      <div class="kpi-sub">${fmtFull(pAppr)} บาท</div>
+    </div>
+    <div class="kpi-card green">
+      <div class="kpi-label">เบิกจ่ายโครงการ</div>
+      <div class="kpi-value">${fmt(pDisb)}</div>
+      <span class="kpi-pct ${pctClass(pct(pDisb,pAppr))}">${pct(pDisb,pAppr)}% ของที่อนุมัติ</span>
+    </div>
+    <div class="kpi-card orange">
+      <div class="kpi-label">งบดำเนินงาน (เบิก)</div>
+      <div class="kpi-value">${fmt(oDisb)}</div>
+      <span class="kpi-pct ${pctClass(pct(oDisb,oAppr))}">${pct(oDisb,oAppr)}% ของที่อนุมัติ</span>
+    </div>
+    <div class="kpi-card purple">
+      <div class="kpi-label">งบบุคลากร (เบิก)</div>
+      <div class="kpi-value">${fmt(salTotal)}</div>
+      <div class="kpi-sub">${fmtFull(salTotal)} บาท</div>
+    </div>
+    <div class="kpi-card teal">
+      <div class="kpi-label">รายการโครงการทั้งหมด</div>
+      <div class="kpi-value">${validProj.length.toLocaleString()}</div>
+      <div class="kpi-sub">รายการ</div>
+    </div>
+    <div class="kpi-card red">
+      <div class="kpi-label">รอเบิก / เบิกแล้ว</div>
+      <div class="kpi-value">${pending} / ${disbN}</div>
+      <div class="kpi-sub">รายการ</div>
+    </div>
+  </div>
+
+  <!-- Row 1 -->
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title">งบโครงการแยกตามสาขา/สังกัด</div>
+      ${divs.map(([k,v],i)=>`
+        <div class="bar-item">
+          <div class="bar-label" title="${k}">${k.length>11?k.slice(0,11)+'…':k}</div>
+          <div class="bar-track"><div class="bar-fill" style="width:${pct(v.a,divs[0][1].a)}%;background:${divColors[i%7]}"></div></div>
+          <div class="bar-val">${fmt(v.d)} <span style="color:#9ca3af">/ ${fmt(v.a)}</span></div>
+        </div>`).join('')}
+    </div>
+    <div class="card">
+      <div class="card-title">การเบิกจ่ายงบดำเนินงานรายเดือน</div>
+      <div class="chart-wrap" style="height:230px"><canvas id="monthOpChart"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Row 2 -->
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title">หมวดโครงการ Top 6 (ตามวงเงินอนุมัติ)</div>
+      ${topTypes.map(([k,v])=>`
+        <div class="bar-item">
+          <div class="bar-label" title="${k}">${k.length>11?k.slice(0,11)+'…':k}</div>
+          <div class="bar-track"><div class="bar-fill" style="width:${pct(v.a,topTypes[0][1].a)}%;background:#7c3aed"></div></div>
+          <div class="bar-val">${fmt(v.d)} <span style="color:#9ca3af">/ ${fmt(v.a)}</span></div>
+        </div>`).join('')}
+    </div>
+    <div class="card">
+      <div class="card-title">การเบิกจ่ายโครงการรายเดือน</div>
+      <div class="chart-wrap" style="height:230px"><canvas id="monthProjChart"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Row 3 -->
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title">งบบุคลากรแยกประเภท</div>
+      ${salTypes.map(([k,v],i)=>`
+        <div class="bar-item">
+          <div class="bar-label" title="${k}">${k.length>11?k.slice(0,11)+'…':k}</div>
+          <div class="bar-track"><div class="bar-fill" style="width:${pct(v,salTypes[0][1])}%;background:${['#d97706','#db2777','#0891b2','#059669'][i%4]}"></div></div>
+          <div class="bar-val">${fmt(v)}</div>
+        </div>`).join('')}
+      <div style="margin-top:12px;padding-top:12px;border-top:1px solid #f3f4f6;display:flex;justify-content:space-between;font-size:13px">
+        <span style="color:#6b7280">รวมทั้งหมด</span>
+        <strong>${fmtFull(salTotal)} บาท</strong>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">หมวดงบดำเนินงาน (ตามยอดเบิก)</div>
+      ${topOp.map(([k,v])=>`
+        <div class="bar-item">
+          <div class="bar-label" title="${k}">${k.length>11?k.slice(0,11)+'…':k}</div>
+          <div class="bar-track"><div class="bar-fill" style="width:${topOp[0]?pct(v.d,topOp[0][1].d):0}%;background:#059669"></div></div>
+          <div class="bar-val">${fmt(v.d)} <span style="color:#9ca3af">/ ${fmt(v.a)}</span></div>
+        </div>`).join('')}
+    </div>
+  </div>
+
+  <!-- Table -->
+  <div class="card" style="margin-bottom:20px">
+    <div class="card-title">รายการโครงการล่าสุด</div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>หมวด</th><th>สาขา</th><th>รายละเอียด</th>
+            <th style="text-align:right">อนุมัติ (บาท)</th>
+            <th style="text-align:right">เบิก (บาท)</th>
+            <th>สถานะ</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${recent.map(r=>{
+            const ap=n(r[9]),di=n(r[10]);
+            const desc=(r[6]||'').replace(/"/g,'');
+            const sd=desc.length>45?desc.slice(0,45)+'…':desc;
+            const lend=(r[13]||'').trim();
+            let st='<span class="badge b-none">-</span>';
+            if(di>0) st='<span class="badge b-ok">เบิกแล้ว</span>';
+            else if(lend==='เงินยืม'||lend==='สำรองจ่าย') st='<span class="badge b-loan">'+lend+'</span>';
+            else if(ap>0) st='<span class="badge b-pend">รออนุมัติ</span>';
+            return`<tr>
+              <td style="font-size:11px;color:#6b7280;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${(r[0]||'').slice(0,18)}</td>
+              <td><span style="background:#eff6ff;color:#1d4ed8;padding:2px 8px;border-radius:12px;font-size:11px">${r[2]||''}</span></td>
+              <td style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${desc}">${sd}</td>
+              <td style="text-align:right;font-weight:500">${fmtFull(ap)}</td>
+              <td style="text-align:right;font-weight:600;color:${di>0?'#059669':'#374151'}">${fmtFull(di)}</td>
+              <td>${st}</td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>
+  </div>`;
+
+  // Charts
+  killChart('monthOpChart');
+  if(mKeys.length){
+    activeCharts['monthOpChart']=new Chart(document.getElementById('monthOpChart'),{
+      type:'bar',
+      data:{labels:mLabels,datasets:[{label:'เบิกจ่าย',data:mVals,backgroundColor:'#2563eb',borderRadius:5,borderSkipped:false}]},
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>'฿'+Math.round(c.raw).toLocaleString('th-TH')}}},
+        scales:{x:{grid:{display:false},ticks:{font:{size:11,family:'Sarabun'}}},
+                y:{grid:{color:'rgba(0,0,0,0.04)'},ticks:{font:{size:10,family:'Sarabun'},callback:v=>fmt(v)}}}
+      }
+    });
+  }
+
+  killChart('monthProjChart');
+  if(mpKeys.length){
+    activeCharts['monthProjChart']=new Chart(document.getElementById('monthProjChart'),{
+      type:'line',
+      data:{labels:mpLabels,datasets:[{label:'เบิกจ่าย',data:mpVals,borderColor:'#7c3aed',backgroundColor:'rgba(124,58,237,0.08)',borderWidth:2,fill:true,tension:0.4,pointRadius:4,pointBackgroundColor:'#7c3aed'}]},
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>'฿'+Math.round(c.raw).toLocaleString('th-TH')}}},
+        scales:{x:{grid:{display:false},ticks:{font:{size:11,family:'Sarabun'}}},
+                y:{grid:{color:'rgba(0,0,0,0.04)'},ticks:{font:{size:10,family:'Sarabun'},callback:v=>fmt(v)}}}
+      }
+    });
+  }
+}
+
+// Note: GIDs below may need updating — check your actual sheet GIDs
+// To find GID: click each sheet tab → look at URL: ...#gid=XXXXXX
+// Update SHEETS object at top of script if charts show no data
+
+loadAll();
+// Auto-refresh every 5 minutes
+setInterval(loadAll, 300000);
+</script>
+</body>
+</html>
