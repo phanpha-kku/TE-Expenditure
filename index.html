@@ -368,7 +368,7 @@ function renderOpBudget(kpiHtml){
           const owner=(r[7]||'').trim();
           const dc=DC[div]||'#6b7280';
           const divBadge=div?('<span style="background:'+dc+'18;color:'+dc+';padding:3px 9px;border-radius:8px;font-size:13px;font-weight:600">'+div+'</span>'):'-';
-          txRows+='<tr onmouseover="this.style.background=\'#fafafa\'" onmouseout="this.style.background=\'\'">'+
+          txRows+='<tr style="cursor:pointer" onmouseover="this.style.background=\'#fafafa\'" onmouseout="this.style.background=\'\'" onclick="openOpDetail('+JSON.stringify(r)+')">'+
             '<td style="padding:8px 16px;border-bottom:1px solid #f9fafb">'+divBadge+'</td>'+
             '<td style="padding:8px 16px;border-bottom:1px solid #f9fafb;font-size:13px;max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(desc.length>60?desc.slice(0,60)+'…':desc)+'</td>'+
             '<td style="padding:8px 16px;border-bottom:1px solid #f9fafb;font-size:13px;color:var(--muted);white-space:nowrap">'+(owner||'-')+'</td>'+
@@ -652,7 +652,7 @@ function renderOpSummary(kpiHtml){
         txs.slice().sort((a,b)=>parseNum(b[9])-parseNum(a[9])).forEach(r=>{
           const desc=(r[5]||'').replace(/"/g,'').trim();
           const owner=(r[7]||'').trim();
-          txRows+='<tr onmouseover="this.style.background=\'#fafafa\'" onmouseout="this.style.background=\'\'">'+
+          txRows+='<tr style="cursor:pointer" onmouseover="this.style.background=\'#fafafa\'" onmouseout="this.style.background=\'\'" onclick="openOpDetail('+JSON.stringify(r)+')">'+
             '<td style="padding:7px 14px;font-size:13px;max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(desc.length>60?desc.slice(0,60)+'…':desc)+'</td>'+
             '<td style="padding:7px 14px;font-size:12px;color:var(--muted);white-space:nowrap">'+(owner||'-')+'</td>'+
             '<td style="padding:7px 14px;text-align:right;font-weight:700;color:'+cc+'">'+fmtF(parseNum(r[9]))+'</td>'+
@@ -803,6 +803,71 @@ function renderOpTrend(kpiHtml){
     data:{labels:mLabels,datasets:ds},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{family:'Sarabun',size:12},padding:12}},tooltip:{callbacks:{label:c=>c.dataset.label+': ฿'+Math.round(c.raw).toLocaleString('th-TH')}}},scales:{x:{stacked:true,grid:{display:false},ticks:{font:{size:11,family:'Sarabun'}}},y:{stacked:true,grid:{color:'rgba(0,0,0,0.04)'},ticks:{font:{size:11,family:'Sarabun'},callback:v=>fmt(v)}}}}
   });
+}
+
+
+/* ---- Detail Panel สำหรับงบดำเนินงาน ---- */
+function openOpDetail(rowData){
+  // rowData = array ของ col ใน row นั้น
+  const cat=(rowData[0]||'').trim();
+  const div=(rowData[1]||'').trim();
+  const desc=(rowData[5]||'').replace(/"/g,'').trim();
+  const owner=(rowData[7]||'').trim();
+  const disb=parseNum(rowData[9]);
+  const c=DC[div]||'#e67e22';
+
+  // หารายการทั้งหมดที่มี cat เดียวกัน (เพื่อแสดง context)
+  const sameCat=opRows.slice(1).filter(r=>
+    (r[0]||'').trim()===cat && parseNum(r[9])>0
+  );
+  const catTotal=sameCat.reduce((s,r)=>s+parseNum(r[9]),0);
+
+  // แสดงรายการอื่นในหมวดเดียวกัน
+  let relRows='';
+  sameCat.slice().sort((a,b)=>parseNum(b[9])-parseNum(a[9])).forEach(r=>{
+    const d2=(r[1]||'').trim();
+    const desc2=(r[5]||'').replace(/"/g,'').trim();
+    const owner2=(r[7]||'').trim();
+    const amt=parseNum(r[9]);
+    const dc2=DC[d2]||'#6b7280';
+    const isThis=(desc2===desc&&d2===div&&amt===disb);
+    relRows+='<tr style="background:'+(isThis?c+'10':'')+';" onmouseover="this.style.background=\''+(isThis?c+'18':'#f9fafb')+'\'" onmouseout="this.style.background=\''+(isThis?c+'10':'')+'\'">' +
+      '<td style="padding:7px 14px">'+(d2?'<span style="background:'+dc2+'18;color:'+dc2+';padding:2px 8px;border-radius:8px;font-size:12px;font-weight:600">'+d2+'</span>':'-')+'</td>'+
+      '<td style="padding:7px 14px;font-size:13px;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+desc2+'">'+(desc2.length>55?desc2.slice(0,55)+'…':desc2)+'</td>'+
+      '<td style="padding:7px 14px;font-size:12px;color:var(--muted);white-space:nowrap">'+(owner2||'-')+'</td>'+
+      '<td style="padding:7px 14px;text-align:right;font-weight:700;font-size:14px;color:'+c+'">'+fmtF(amt)+'</td>'+
+    '</tr>';
+  });
+
+  document.getElementById('dp-title').textContent='งบดำเนินงาน: '+cat;
+  document.getElementById('dp-body').innerHTML=
+    '<div class="dp-code" style="color:'+c+'">'+cat+'</div>'+
+    '<div class="dp-name">'+desc+'</div>'+
+    (div?'<div style="margin-bottom:10px"><span style="background:'+c+'18;color:'+c+';padding:3px 10px;border-radius:10px;font-size:13px;font-weight:600">'+div+'</span></div>':'')+
+    (owner?'<div style="font-size:13px;color:var(--muted);margin-bottom:12px">&#128100; เจ้าของเรื่อง: '+owner+'</div>':'')+
+    '<div class="dp-kpis">'+
+      '<div class="dp-kpi"><div class="dp-kpi-lbl">ยอดเบิกรายการนี้</div><div class="dp-kpi-val" style="color:'+c+'">'+fmtF(disb)+'</div></div>'+
+      '<div class="dp-kpi"><div class="dp-kpi-lbl">รวมหมวด'+cat+'</div><div class="dp-kpi-val" style="color:'+c+'">'+fmtF(catTotal)+'</div></div>'+
+      '<div class="dp-kpi"><div class="dp-kpi-lbl">รายการในหมวด</div><div class="dp-kpi-val">'+sameCat.length+'</div></div>'+
+    '</div>'+
+    '<div class="dp-section">'+
+      '<div class="dp-sec-title">รายการทั้งหมดในหมวด '+cat+' <span style="font-size:10px;font-weight:400;color:var(--muted)">('+sameCat.length+' รายการ)</span></div>'+
+      '<div style="overflow-x:auto;max-height:450px;overflow-y:auto">'+
+        '<table class="tx-table">'+
+          '<thead><tr>'+
+            '<th>สาขา</th><th>รายละเอียด</th><th>เจ้าของเรื่อง</th><th style="text-align:right">ยอดเบิก (บาท)</th>'+
+          '</tr></thead>'+
+          '<tbody>'+relRows+'</tbody>'+
+          '<tfoot><tr class="tx-total-row">'+
+            '<td colspan="3" style="text-align:right;padding:7px 14px">รวม '+sameCat.length+' รายการ</td>'+
+            '<td class="tx-amt">'+fmtF(catTotal)+'</td>'+
+          '</tr></tfoot>'+
+        '</table>'+
+      '</div>'+
+    '</div>';
+
+  document.getElementById('detailPanel').classList.add('open');
+  document.getElementById('overlay').classList.add('open');
 }
 
 
