@@ -311,7 +311,7 @@ function renderOpBudget(kpiHtml){
       const disb=parseNum(r[9]);
       const div=(r[1]||'').trim();
       const desc=(r[5]||'').replace(/"/g,'').trim();
-      const owner=(r[8]||'').trim();
+      const owner=(r[7]||'').trim(); // col H = เจ้าของเรื่อง
       const c=DC[div]||'#e67e22';
       txRows+=`<tr>
         <td style="font-size:11px;color:var(--muted)">${(r[0]||'').slice(0,18)}</td>
@@ -427,36 +427,7 @@ function renderOpBudget(kpiHtml){
     }).join('')}
   </div>
 
-  <div class="card">
-    <div class="card-hd">รายการเบิกจ่ายทั้งหมด <span style="font-size:12px;font-weight:400;color:var(--muted)">${disbRows.length} รายการ</span>
-      <button onclick="opSelectDiv('')" style="margin-left:auto;font-family:Sarabun,sans-serif;font-size:12px;padding:5px 14px;border-radius:8px;border:1px solid #e67e22;background:#fff8f0;color:#e67e22;cursor:pointer;font-weight:600">ดูรายละเอียด &#8594;</button>
-    </div>
-    <div style="overflow-x:auto">
-      <table class="dt">
-        <thead><tr>
-          <th style="text-align:left">หมวด</th>
-          <th style="text-align:left">สาขา</th>
-          <th style="text-align:left">รายละเอียด</th>
-          <th style="text-align:left">เจ้าของเรื่อง</th>
-          <th style="text-align:right">ยอดเบิก (บาท)</th>
-        </tr></thead>
-        <tbody>
-          ${disbRows.slice(0,10).map(r=>{
-            const div=(r[1]||'').trim();const c=DC[div]||'#e67e22';
-            const desc=(r[5]||'').replace(/"/g,'').trim();
-            const owner=(r[8]||'').trim();
-            return`<tr>
-              <td style="font-size:11px;color:var(--muted)">${(r[0]||'').slice(0,18)}</td>
-              <td>${div?`<span style="background:${c}18;color:${c};padding:2px 7px;border-radius:8px;font-size:11px;font-weight:600">${div}</span>`:'-'}</td>
-              <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px">${desc.length>45?desc.slice(0,45)+'…':desc}</td>
-              <td style="font-size:12px;color:var(--muted)">${owner||'-'}</td>
-              <td style="text-align:right;font-weight:700;color:#e67e22">${fmtF(parseNum(r[9]))}</td>
-            </tr>`;
-          }).join('')}
-        </tbody>
-      </table>
-    </div>
-  </div>`;
+  `;
 
   // Donut chart แยกสาขา
   kc('opDonutChart');
