@@ -337,6 +337,7 @@ function renderOpBudget(kpiHtml){
   const DC_TXT2={สำนักงาน:'#0c4a6e',ธรณี:'#3b0764',ชีวภาพ:'#064e3b',อาหาร:'#78350f',ผลิต:'#1e3a8a',ประกอบอาหาร:'#831843'};
 
   function renderCats(){
+    window._opDetailRows=[];
     const fRows=getFiltered();
     const grouped={};
     fRows.forEach(r=>{
@@ -368,7 +369,8 @@ function renderOpBudget(kpiHtml){
           const owner=(r[7]||'').trim();
           const dc=DC[div]||'#6b7280';
           const divBadge=div?('<span style="background:'+dc+'18;color:'+dc+';padding:3px 9px;border-radius:8px;font-size:13px;font-weight:600">'+div+'</span>'):'-';
-          txRows+='<tr style="cursor:pointer" onmouseover="this.style.background=\'#fafafa\'" onmouseout="this.style.background=\'\'" onclick="openOpDetail('+JSON.stringify(r)+')">'+
+          const _ri=window._opDetailRows.push(r)-1;
+          txRows+='<tr style="cursor:pointer" onmouseover="this.style.background=\'#fafafa\'" onmouseout="this.style.background=\'\'" onclick="openOpDetail('+_ri+')">'+
             '<td style="padding:8px 16px;border-bottom:1px solid #f9fafb">'+divBadge+'</td>'+
             '<td style="padding:8px 16px;border-bottom:1px solid #f9fafb;font-size:13px;max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(desc.length>60?desc.slice(0,60)+'…':desc)+'</td>'+
             '<td style="padding:8px 16px;border-bottom:1px solid #f9fafb;font-size:13px;color:var(--muted);white-space:nowrap">'+(owner||'-')+'</td>'+
@@ -652,7 +654,8 @@ function renderOpSummary(kpiHtml){
         txs.slice().sort((a,b)=>parseNum(b[9])-parseNum(a[9])).forEach(r=>{
           const desc=(r[5]||'').replace(/"/g,'').trim();
           const owner=(r[7]||'').trim();
-          txRows+='<tr style="cursor:pointer" onmouseover="this.style.background=\'#fafafa\'" onmouseout="this.style.background=\'\'" onclick="openOpDetail('+JSON.stringify(r)+')">'+
+          const _ri=window._opDetailRows.push(r)-1;
+          txRows+='<tr style="cursor:pointer" onmouseover="this.style.background=\'#fafafa\'" onmouseout="this.style.background=\'\'" onclick="openOpDetail('+_ri+')">'+
             '<td style="padding:7px 14px;font-size:13px;max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(desc.length>60?desc.slice(0,60)+'…':desc)+'</td>'+
             '<td style="padding:7px 14px;font-size:12px;color:var(--muted);white-space:nowrap">'+(owner||'-')+'</td>'+
             '<td style="padding:7px 14px;text-align:right;font-weight:700;color:'+cc+'">'+fmtF(parseNum(r[9]))+'</td>'+
@@ -806,9 +809,10 @@ function renderOpTrend(kpiHtml){
 }
 
 
+
 /* ---- Detail Panel สำหรับงบดำเนินงาน ---- */
-function openOpDetail(rowData){
-  // rowData = array ของ col ใน row นั้น
+function openOpDetail(idx){
+  const rowData=window._opDetailRows[idx]||[];
   const cat=(rowData[0]||'').trim();
   const div=(rowData[1]||'').trim();
   const desc=(rowData[5]||'').replace(/"/g,'').trim();
@@ -816,26 +820,64 @@ function openOpDetail(rowData){
   const disb=parseNum(rowData[9]);
   const c=DC[div]||'#e67e22';
 
-  // หารายการทั้งหมดที่มี cat เดียวกัน (เพื่อแสดง context)
-  const sameCat=opRows.slice(1).filter(r=>
-    (r[0]||'').trim()===cat && parseNum(r[9])>0
-  );
-  const catTotal=sameCat.reduce((s,r)=>s+parseNum(r[9]),0);
+  // รายการทั้งหมดในหมวดเดียวกัน
+  const allInCat=opRows.slice(1).filter(r=>(r[0]||'').trim()===cat&&parseNum(r[9])>0);
+  const catTotal=allInCat.reduce((s,r)=>s+parseNum(r[9]),0);
 
-  // แสดงรายการอื่นในหมวดเดียวกัน
-  let relRows='';
-  sameCat.slice().sort((a,b)=>parseNum(b[9])-parseNum(a[9])).forEach(r=>{
+  // รวมตามสาขาในหมวดนี้
+  const catByDiv={};
+  allInCat.forEach(r=>{
+    const d2=(r[1]||'').trim();
+    if(!d2||!VALID_DIVS.has(d2))return;
+    if(!catByDiv[d2])catByDiv[d2]=0;
+    catByDiv[d2]+=parseNum(r[9]);
+  });
+  const catDivEntries=Object.entries(catByDiv).sort((a,b)=>b[1]-a[1]);
+  const maxDivAmt=catDivEntries.length?catDivEntries[0][1]:1;
+
+  // รายเดือนของหมวดนี้
+  const catMonths={};
+  allInCat.forEach(r=>{
+    const dtRaw=r[6]||r[4]||r[3]||'';
+    const dt=new Date(dtRaw);
+    if(isNaN(dt)||dt.getFullYear()<2020)return;
+    const mk=dt.getFullYear()+'-'+(dt.getMonth()+1).toString().padStart(2,'0');
+    if(!catMonths[mk])catMonths[mk]=0;
+    catMonths[mk]+=parseNum(r[9]);
+  });
+  const mKeys=Object.keys(catMonths).sort();
+  const mN=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+
+  // แยกสาขา rows
+  let divRows='';
+  catDivEntries.forEach(([d2,amt])=>{
+    const dc2=DC[d2]||'#6b7280';
+    const dp=Math.min(Math.round(amt/catTotal*100),100);
+    const barW=Math.min(Math.round(amt/maxDivAmt*100),100);
+    divRows+='<div class="dp-div-row" style="cursor:default">'+
+      '<div class="dp-div-dot" style="background:'+dc2+'"></div>'+
+      '<div class="dp-div-name">'+d2+'</div>'+
+      '<div class="dp-div-bar"><div class="dp-div-fill" style="width:'+barW+'%;background:'+dc2+'"></div></div>'+
+      '<div class="dp-div-pct" style="color:'+dc2+'">'+dp+'%</div>'+
+      '<div class="dp-div-amt">'+fmtF(amt)+' บาท</div>'+
+    '</div>';
+  });
+
+  // ตารางรายการทั้งหมดในหมวด
+  let txRows='';
+  allInCat.slice().sort((a,b)=>parseNum(b[9])-parseNum(a[9])).forEach(r=>{
     const d2=(r[1]||'').trim();
     const desc2=(r[5]||'').replace(/"/g,'').trim();
     const owner2=(r[7]||'').trim();
     const amt=parseNum(r[9]);
     const dc2=DC[d2]||'#6b7280';
-    const isThis=(desc2===desc&&d2===div&&amt===disb);
-    relRows+='<tr style="background:'+(isThis?c+'10':'')+';" onmouseover="this.style.background=\''+(isThis?c+'18':'#f9fafb')+'\'" onmouseout="this.style.background=\''+(isThis?c+'10':'')+'\'">' +
-      '<td style="padding:7px 14px">'+(d2?'<span style="background:'+dc2+'18;color:'+dc2+';padding:2px 8px;border-radius:8px;font-size:12px;font-weight:600">'+d2+'</span>':'-')+'</td>'+
-      '<td style="padding:7px 14px;font-size:13px;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+desc2+'">'+(desc2.length>55?desc2.slice(0,55)+'…':desc2)+'</td>'+
-      '<td style="padding:7px 14px;font-size:12px;color:var(--muted);white-space:nowrap">'+(owner2||'-')+'</td>'+
-      '<td style="padding:7px 14px;text-align:right;font-weight:700;font-size:14px;color:'+c+'">'+fmtF(amt)+'</td>'+
+    const isThis=desc2===desc&&d2===div&&amt===disb;
+    txRows+='<tr style="background:'+(isThis?c+'10':'')+';cursor:default" onmouseover="this.style.background=\''+(isThis?c+'18':'#f9fafb')+'\'" onmouseout="this.style.background=\''+(isThis?c+'10':'')+'\'">' +
+      '<td class="tx-date">-</td>'+
+      '<td>'+(d2?'<span class="tx-div-badge" style="background:'+dc2+'18;color:'+dc2+'">'+d2+'</span>':'-')+'</td>'+
+      '<td class="tx-desc" title="'+desc2+'">'+(desc2.length>50?desc2.slice(0,50)+'…':desc2)+'</td>'+
+      '<td style="font-size:13px;color:var(--muted);white-space:nowrap">'+(owner2||'-')+'</td>'+
+      '<td class="tx-amt" style="color:'+c+'">'+fmtF(amt)+'</td>'+
     '</tr>';
   });
 
@@ -843,23 +885,47 @@ function openOpDetail(rowData){
   document.getElementById('dp-body').innerHTML=
     '<div class="dp-code" style="color:'+c+'">'+cat+'</div>'+
     '<div class="dp-name">'+desc+'</div>'+
-    (div?'<div style="margin-bottom:10px"><span style="background:'+c+'18;color:'+c+';padding:3px 10px;border-radius:10px;font-size:13px;font-weight:600">'+div+'</span></div>':'')+
-    (owner?'<div style="font-size:13px;color:var(--muted);margin-bottom:12px">&#128100; เจ้าของเรื่อง: '+owner+'</div>':'')+
+    (div?'<div style="margin-bottom:6px"><span style="background:'+c+'18;color:'+c+';padding:3px 10px;border-radius:10px;font-size:13px;font-weight:600">'+div+'</span></div>':'')+
+    (owner?'<div style="font-size:13px;color:var(--muted);margin-bottom:10px">&#128100; เจ้าของเรื่อง: '+owner+'</div>':'')+
+
+    // KPI
     '<div class="dp-kpis">'+
       '<div class="dp-kpi"><div class="dp-kpi-lbl">ยอดเบิกรายการนี้</div><div class="dp-kpi-val" style="color:'+c+'">'+fmtF(disb)+'</div></div>'+
-      '<div class="dp-kpi"><div class="dp-kpi-lbl">รวมหมวด'+cat+'</div><div class="dp-kpi-val" style="color:'+c+'">'+fmtF(catTotal)+'</div></div>'+
-      '<div class="dp-kpi"><div class="dp-kpi-lbl">รายการในหมวด</div><div class="dp-kpi-val">'+sameCat.length+'</div></div>'+
+      '<div class="dp-kpi"><div class="dp-kpi-lbl">รวมหมวด</div><div class="dp-kpi-val" style="color:'+c+'">'+fmtF(catTotal)+'</div></div>'+
+      '<div class="dp-kpi"><div class="dp-kpi-lbl">รายการในหมวด</div><div class="dp-kpi-val">'+allInCat.length+'</div></div>'+
     '</div>'+
+
+    // progress bar รวม
+    '<div style="margin-bottom:14px">'+
+      '<div style="height:12px;background:#f3f4f6;border-radius:6px;overflow:hidden;margin-bottom:3px">'+
+        '<div style="height:100%;width:'+Math.min(Math.round(disb/catTotal*100),100)+'%;background:'+c+';border-radius:6px"></div>'+
+      '</div>'+
+      '<div style="font-size:11px;font-weight:700;text-align:right;color:'+c+'">รายการนี้ = '+Math.round(disb/catTotal*100)+'% ของหมวด</div>'+
+    '</div>'+
+
+    // แยกตามสาขา
+    (catDivEntries.length?
+      '<div class="dp-section">'+
+        '<div class="dp-sec-title">แยกตามสาขา</div>'+
+        divRows+
+      '</div>':'')+
+
+    // กราฟรายเดือน
+    (mKeys.length?
+      '<div class="dp-section"><div class="dp-sec-title">แนวโน้มรายเดือน (หมวด '+cat+')</div>'+
+        '<div style="position:relative;height:150px"><canvas id="miniOpChart"></canvas></div>'+
+      '</div>':'')+
+
+    // ตารางรายการ
     '<div class="dp-section">'+
-      '<div class="dp-sec-title">รายการทั้งหมดในหมวด '+cat+' <span style="font-size:10px;font-weight:400;color:var(--muted)">('+sameCat.length+' รายการ)</span></div>'+
-      '<div style="overflow-x:auto;max-height:450px;overflow-y:auto">'+
+      '<div class="dp-sec-title">รายการทั้งหมดในหมวด '+cat+
+        ' <span style="font-size:10px;font-weight:400;color:var(--muted)">('+allInCat.length+' รายการ)</span></div>'+
+      '<div style="overflow-x:auto;max-height:400px;overflow-y:auto">'+
         '<table class="tx-table">'+
-          '<thead><tr>'+
-            '<th>สาขา</th><th>รายละเอียด</th><th>เจ้าของเรื่อง</th><th style="text-align:right">ยอดเบิก (บาท)</th>'+
-          '</tr></thead>'+
-          '<tbody>'+relRows+'</tbody>'+
+          '<thead><tr><th>วันที่</th><th>สาขา</th><th>รายละเอียด</th><th>เจ้าของเรื่อง</th><th style="text-align:right">ยอดเบิก (บาท)</th></tr></thead>'+
+          '<tbody>'+txRows+'</tbody>'+
           '<tfoot><tr class="tx-total-row">'+
-            '<td colspan="3" style="text-align:right;padding:7px 14px">รวม '+sameCat.length+' รายการ</td>'+
+            '<td colspan="4" style="text-align:right;padding:7px 8px">รวม '+allInCat.length+' รายการ</td>'+
             '<td class="tx-amt">'+fmtF(catTotal)+'</td>'+
           '</tr></tfoot>'+
         '</table>'+
@@ -868,6 +934,20 @@ function openOpDetail(rowData){
 
   document.getElementById('detailPanel').classList.add('open');
   document.getElementById('overlay').classList.add('open');
+
+  // mini chart
+  kc('miniOpChart');
+  if(mKeys.length){
+    charts['miniOpChart']=new Chart(document.getElementById('miniOpChart'),{
+      type:'bar',
+      data:{labels:mKeys.map(mk=>mN[parseInt(mk.split('-')[1])-1]),
+            datasets:[{data:mKeys.map(mk=>catMonths[mk]||0),backgroundColor:c,borderRadius:4,borderSkipped:false}]},
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{display:false},tooltip:{callbacks:{label:x=>'฿'+Math.round(x.raw).toLocaleString('th-TH')}}},
+        scales:{x:{grid:{display:false},ticks:{font:{size:11,family:'Sarabun'}}},
+                y:{grid:{color:'rgba(0,0,0,0.04)'},ticks:{font:{size:10,family:'Sarabun'},callback:v=>fmt(v)}}}}
+    });
+  }
 }
 
 
