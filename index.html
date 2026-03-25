@@ -502,18 +502,28 @@ function openDetail(code, filterDiv){
 
   function renderPanel(){
     // progress bars per div
+    // รวมทั้งสาขาที่มีงบตั้งไว้ และสาขาที่เบิกโดยไม่มีงบตั้งไว้
+    const allDivsInPanel=new Set([...divKeys,...Object.keys(act.divs||{}).filter(d=>VALID_DIVS.has(d))]);
     let divRows='';
-    divKeys.forEach(d=>{
+    [...allDivsInPanel].sort().forEach(d=>{
       const b=p.divs_budget[d]||0;
       const da=act.divs[d]?act.divs[d].disb:0;
-      const dp=pct(da,b);const c=DC[d]||'#6b7280';
+      if(b===0&&da===0)return; // ข้ามถ้าทั้งคู่เป็น 0
+      const hasNoBudget=b===0&&da>0; // เบิกแล้วแต่ไม่มีงบตั้งไว้
+      const dp=b>0?pct(da,b):0;
+      const c=DC[d]||'#6b7280';
       const isActive=activeDivTab===d;
       divRows+=`<div class="dp-div-row" style="${isActive?'background:#eff6ff;border:1px solid '+c+'40':''}" onclick="panelSetDiv('${code}','${d}')">
         <div class="dp-div-dot" style="background:${c}"></div>
-        <div class="dp-div-name" style="color:${isActive?c:'inherit'}">${d}</div>
-        <div class="dp-div-bar"><div class="dp-div-fill" style="width:${Math.min(dp,100)}%;background:${c}"></div></div>
-        <div class="dp-div-pct" style="color:${pctClr(dp)}">${dp}%</div>
-        <div class="dp-div-amt">${fmtF(da)}/${fmtF(b)}</div>
+        <div class="dp-div-name" style="color:${isActive?c:'inherit'}">${d}${hasNoBudget?'<span style="font-size:10px;background:#fef3c7;color:#92400e;padding:1px 5px;border-radius:6px;margin-left:5px;font-weight:600">ไม่มีงบตั้งไว้</span>':''}</div>
+        ${b>0
+          ?`<div class="dp-div-bar"><div class="dp-div-fill" style="width:${Math.min(dp,100)}%;background:${c}"></div></div>
+            <div class="dp-div-pct" style="color:${pctClr(dp)}">${dp}%</div>
+            <div class="dp-div-amt">${fmtF(da)}/${fmtF(b)}</div>`
+          :`<div class="dp-div-bar" style="background:#fef3c7"><div class="dp-div-fill" style="width:100%;background:${c}99;background:repeating-linear-gradient(45deg,${c}33,${c}33 4px,${c}66 4px,${c}66 8px)"></div></div>
+            <div class="dp-div-pct" style="color:#92400e">+${fmtF(da)}</div>
+            <div class="dp-div-amt" style="color:#92400e">เบิก ${fmtF(da)}</div>`
+        }
         <div class="dp-div-arrow" style="color:${c}">&#8594;</div>
       </div>`;
     });
