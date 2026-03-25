@@ -218,9 +218,12 @@ function switchTab(i,el){activeTab=i;document.querySelectorAll('.tab').forEach(t
 /* ---- Tab 4: งบดำเนินงาน ---- */
 function renderOpBudget(kpiHtml){
   console.log('renderOpBudget called, opRows:', opRows.length);
-  const rows=opRows.slice(1).filter(r=>r[0]&&r[0].trim());
+  // งบดำเนินงาน: filter แถวที่มีข้อมูล (col A หรือ col B มีค่า) และมียอดเบิก col J > 0
+  const rows=opRows.slice(1).filter(r=>r.length>5&&(r[0]||r[1]||'').trim());
   const disbRows=rows.filter(r=>parseNum(r[9])>0);
   console.log('rows after filter:', rows.length, '| disbRows:', disbRows.length);
+  if(rows.length>0) console.log('sample row:', rows[0]);
+  if(disbRows.length>0) console.log('sample disbRow:', disbRows[0]);
 
   // col: A=0(หมวด), B=1(สังกัด), F=5(รายละเอียด), H=7(เจ้าของ), J=9(เบิก)
 
@@ -261,6 +264,16 @@ function renderOpBudget(kpiHtml){
   const mLabels=mKeys.map(mk=>mN[parseInt(mk.split('-')[1])-1]);
 
   const grandTotal=disbRows.reduce((s,r)=>s+parseNum(r[9]),0);
+  if(disbRows.length===0){
+    document.getElementById('app').innerHTML=kpiHtml+`
+    <div style="background:#fff;border-radius:12px;border:1px solid var(--border);padding:40px;text-align:center;color:var(--muted)">
+      <div style="font-size:40px;margin-bottom:12px">📋</div>
+      <div style="font-size:16px;font-weight:600;margin-bottom:8px">ไม่พบข้อมูลงบดำเนินงาน</div>
+      <div style="font-size:13px">opRows: ${opRows.length} แถว | กรุณาตรวจสอบว่า sheet งบดำเนินงาน (GID=0) เปิด Publish to web แล้ว<br>หรือคอลัมน์ J (ยอดเบิก) มีข้อมูลที่เป็นตัวเลข</div>
+      ${opRows.length>0?'<div style="margin-top:12px;font-size:11px;color:#999">ตัวอย่างแถวแรก: '+JSON.stringify(opRows.slice(1,3))+'</div>':''}
+    </div>\`;
+    return;
+  }
 
   // filter state - ใช้ global เพื่อให้ onchange event เข้าถึงได้
   window._opFDiv='';
@@ -558,7 +571,7 @@ async function loadSheets(){
     // รวมยอดเบิกจ่าย งบดำเนินงาน (col J = index 9)
     opTotal=0;
     opRows.slice(1).forEach(r=>{
-      if(!r[0]||!r[0].trim())return;
+      if(r.length<=5||(!(r[0]||'').trim()&&!(r[1]||'').trim()))return;
       opTotal+=parseNum(r[9]);
     });
     buildCodeFilter();renderAll();
