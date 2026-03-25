@@ -217,8 +217,10 @@ function switchTab(i,el){activeTab=i;document.querySelectorAll('.tab').forEach(t
 
 /* ---- Tab 4: งบดำเนินงาน ---- */
 function renderOpBudget(kpiHtml){
+  console.log('renderOpBudget called, opRows:', opRows.length);
   const rows=opRows.slice(1).filter(r=>r[0]&&r[0].trim());
   const disbRows=rows.filter(r=>parseNum(r[9])>0);
+  console.log('rows after filter:', rows.length, '| disbRows:', disbRows.length);
 
   // col: A=0(หมวด), B=1(สังกัด), F=5(รายละเอียด), H=7(เจ้าของ), J=9(เบิก)
 
@@ -505,6 +507,9 @@ async function loadSheets(){
     if(!r.ok)throw new Error('HTTP '+r.status);
     rawRows=parseCSV(await r.text());
     opRows=rOp.ok?parseCSV(await rOp.text()):[];
+    console.log('opRows length:', opRows.length, '| status:', rOp.status, '| GID_OP:', GID_OP);
+    if(opRows.length>0) console.log('opRows[0]:', opRows[0]);
+    if(opRows.length>1) console.log('opRows[1]:', opRows[1]);
     projActual={};allTx=[];
     rawRows.slice(1).forEach(row=>{
       if(!row[0]||!row[0].trim())return;
