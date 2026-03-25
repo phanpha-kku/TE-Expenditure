@@ -28,7 +28,15 @@ body{font-family:'Sarabun',sans-serif;background:var(--cream);color:var(--text);
 select.fs{font-family:'Sarabun',sans-serif;font-size:14px;padding:5px 10px;border-radius:7px;border:1px solid #d4a898;background:#fff;color:var(--text);cursor:pointer}
 .fbtn{font-family:'Sarabun',sans-serif;font-size:13px;padding:5px 10px;border-radius:7px;border:1px solid #d4a898;background:#fff5f0;color:var(--primary-dark);cursor:pointer}
 .cnt{font-size:13px;color:var(--primary);background:#fde8e8;padding:3px 9px;border-radius:20px;font-weight:600}
-.tabs{display:flex;background:#faebd7;border-bottom:2px solid #e8d5c8;padding:0 28px}
+.tabs{display:flex;background:#faebd7;border-bottom:2px solid #e8d5c8;padding:0 28px;position:relative}
+.tab-group{position:relative;display:inline-flex}
+.tab-parent{font-family:'Sarabun',sans-serif;padding:14px 18px;font-size:15px;font-weight:500;cursor:pointer;border:none;background:none;color:var(--muted);border-bottom:3px solid transparent;margin-bottom:-2px;transition:all .2s;white-space:nowrap}
+.tab-parent:hover,.tab-parent.active-group{color:var(--primary);border-bottom-color:var(--primary);font-weight:700}
+.tab-dropdown-menu{display:none;position:absolute;top:calc(100% + 2px);left:0;background:#fff;border:1px solid var(--border);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,0.12);z-index:200;min-width:200px;padding:6px 0}
+.tab-group.open .tab-dropdown-menu{display:block}
+.tab-dd-item{font-family:'Sarabun',sans-serif;display:block;width:100%;text-align:left;padding:11px 18px;font-size:14px;font-weight:500;cursor:pointer;border:none;background:none;color:var(--text);transition:background .15s}
+.tab-dd-item:hover{background:#fdf0ea;color:var(--primary)}
+.tab-dd-item.active{background:#fde8e8;color:var(--primary);font-weight:700}
 .tab{font-family:'Sarabun',sans-serif;padding:14px 22px;font-size:15px;font-weight:500;cursor:pointer;border:none;background:none;color:var(--muted);border-bottom:3px solid transparent;margin-bottom:-2px;transition:all .2s}
 .tab.active{color:var(--primary);border-bottom-color:var(--primary);font-weight:700}
 .main{padding:20px 28px;max-width:1500px;margin:0 auto}
@@ -159,10 +167,22 @@ table.dt tr:hover td{background:#fafafa}
 
 
 <div class="tabs">
-  <button class="tab active" onclick="switchTab(0,this)">&#128200; ภาพรวม</button>
-  <button class="tab" onclick="switchTab(1,this)">&#128203; โครงการ</button>
-  <button class="tab" onclick="switchTab(2,this)">&#128337; แนวโน้มรายเดือน</button>
-  <button class="tab" onclick="switchTab(3,this)">&#128196; งบดำเนินงาน</button>
+  <div class="tab-group" id="tg-proj">
+    <button class="tab tab-parent" id="tab-proj-parent" onclick="toggleTabGroup('tg-proj')">&#128203; โครงการ &#9660;</button>
+    <div class="tab-dropdown-menu" id="tdm-proj">
+      <button class="tab-dd-item" onclick="switchTab(0,this);closeTabGroups()">&#128200; โครงการ</button>
+      <button class="tab-dd-item" onclick="switchTab(1,this);closeTabGroups()">&#128203; โครงการ-สรุป</button>
+      <button class="tab-dd-item" onclick="switchTab(2,this);closeTabGroups()">&#128337; โครงการ-แนวโน้ม</button>
+    </div>
+  </div>
+  <div class="tab-group" id="tg-op">
+    <button class="tab tab-parent" id="tab-op-parent" onclick="toggleTabGroup('tg-op')">&#128196; งบดำเนินงาน &#9660;</button>
+    <div class="tab-dropdown-menu" id="tdm-op">
+      <button class="tab-dd-item" onclick="switchTab(3,this);closeTabGroups()">&#128196; งบดำเนินงาน</button>
+      <button class="tab-dd-item" onclick="switchTab(4,this);closeTabGroups()">&#128202; งบดำเนินงาน-สรุป</button>
+      <button class="tab-dd-item" onclick="switchTab(5,this);closeTabGroups()">&#128337; งบดำเนินงาน-แนวโน้ม</button>
+    </div>
+  </div>
 </div>
 
 <div class="main">
@@ -193,7 +213,7 @@ const TIER_MAP={'Teir 1':'t1','Teir 2':'t2','Plan':'tp'};
 const VALID_DIVS=new Set(['สำนักงาน','ธรณี','ชีวภาพ','อาหาร','ผลิต','ประกอบอาหาร']);
 const BUDGET_DATA=[{"code": "120131", "name": "โครงการพัฒนาบุคลากร", "budget": 1867300.0, "divs_budget": {"สำนักงาน": 850000.0, "ธรณี": 221000.0, "ชีวภาพ": 220000.0, "อาหาร": 366300.0, "ผลิต": 200000.0, "ประกอบอาหาร": 10000.0}, "divs_actual": {}, "owner": "", "tier": "", "sub_count": 1, "full_name": "โครงการพัฒนาบุคลากร"}, {"code": "120221", "name": "โครงการสหกิจศึกษาและนิเทศงานนักศึกษา", "budget": 375000.0, "divs_budget": {"สำนักงาน": 250000.0, "ธรณี": 20000.0, "ชีวภาพ": 30000.0, "อาหาร": 10000.0, "ผลิต": 65000.0}, "divs_actual": {}, "owner": "คุณผการัตน์", "tier": "Teir 2", "sub_count": 1, "full_name": "โครงการสหกิจศึกษาและนิเทศงานนักศึกษา"}, {"code": "120457", "name": "โครงการประชาสัมพันธ์และสื่อสารองค์กร", "budget": 285300.0, "divs_budget": {"สำนักงาน": 200000.0, "ธรณี": 20300.0, "ชีวภาพ": 10000.0, "อาหาร": 45000.0, "ประกอบอาหาร": 10000.0}, "divs_actual": {}, "owner": "", "tier": "", "sub_count": 1, "full_name": "โครงการประชาสัมพันธ์และสื่อสารองค์กร"}, {"code": "120646", "name": "โครงการสร้างเครือข่ายความร่วมมือกับสถาบันต่างประเทศ", "budget": 420000.0, "divs_budget": {"สำนักงาน": 300000.0, "ธรณี": 100000.0, "ชีวภาพ": 10000.0, "ผลิต": 10000.0}, "divs_actual": {}, "owner": "คุณกนกอร", "tier": "Teir 1", "sub_count": 1, "full_name": "โครงการสร้างเครือข่ายความร่วมมือกับสถาบันต่างประเทศ"}, {"code": "120695", "name": "โครงการพัฒนาศักยภาพนักวิจัย - โครงการพัฒนาศักยภาพนักวิจัยเพื่อรองรับการสร้างนวัตกรรม", "budget": 487000.0, "divs_budget": {"สำนักงาน": 350000.0, "ชีวภาพ": 10000.0, "อาหาร": 72000.0, "ผลิต": 10000.0, "ธรณี": 45000.0}, "divs_actual": {}, "owner": "คุณเฉลิมภรณ์", "tier": "Teir 1", "sub_count": 2, "full_name": "โครงการพัฒนาศักยภาพนักวิจัย - โครงการพัฒนาศักยภาพนักวิจัยเพื่อรองรับการสร้างนวัตกรรม"}, {"code": "120912", "name": "โครงการสนับสนุนทุนนักศึกษา- ระดับบัณฑิตศึกษา", "budget": 1945000.0, "divs_budget": {"สำนักงาน": 1150000.0, "ธรณี": 165000.0, "ชีวภาพ": 400000.0, "อาหาร": 110000.0, "ผลิต": 60000.0, "ประกอบอาหาร": 60000.0}, "divs_actual": {}, "owner": "คุณวรการ", "tier": "Teir 1", "sub_count": 2, "full_name": "โครงการสนับสนุนทุนนักศึกษา- ระดับบัณฑิตศึกษา"}, {"code": "121129", "name": "โครงการจัดหาครุภัณฑ์เพื่อการเรียนการสอนและการวิจัย", "budget": 3245900.0, "divs_budget": {"สำนักงาน": 2204000.0, "ธรณี": 365000.0, "ชีวภาพ": 70000.0, "ผลิต": 606900.0}, "divs_actual": {}, "owner": "คุณวรการ", "tier": "Teir 2", "sub_count": 1, "full_name": "โครงการจัดหาครุภัณฑ์เพื่อการเรียนการสอนและการวิจัย"}, {"code": "121130", "name": "โครงการประกันคุณภาพ", "budget": 155000.0, "divs_budget": {"สำนักงาน": 100000.0, "ธรณี": 30000.0, "ชีวภาพ": 15000.0, "ผลิต": 10000.0}, "divs_actual": {}, "owner": "", "tier": "", "sub_count": 1, "full_name": "โครงการประกันคุณภาพ"}, {"code": "121131", "name": "โครงการซ่อมแซมครุภัณฑ์", "budget": 813000.0, "divs_budget": {"สำนักงาน": 150000.0, "ธรณี": 273000.0, "ชีวภาพ": 240000.0, "อาหาร": 100000.0, "ผลิต": 50000.0}, "divs_actual": {}, "owner": "", "tier": "", "sub_count": 1, "full_name": "โครงการซ่อมแซมครุภัณฑ์"}, {"code": "121132", "name": "โครงการสอบวิทยานิพนธ์นักศึกษา", "budget": 300000.0, "divs_budget": {"ธรณี": 30000.0, "ชีวภาพ": 220000.0, "อาหาร": 50000.0}, "divs_actual": {}, "owner": "", "tier": "", "sub_count": 1, "full_name": "โครงการสอบวิทยานิพนธ์นักศึกษา"}, {"code": "121133", "name": "ค่าธรรมเนียมการวิจัยปริญญาเอก", "budget": 120000.0, "divs_budget": {"ชีวภาพ": 120000.0}, "divs_actual": {}, "owner": "คุณเฉลิมภรณ์", "tier": "Teir 2", "sub_count": 1, "full_name": "ค่าธรรมเนียมการวิจัยปริญญาเอก"}, {"code": "121134", "name": "โครงการรับปริญญา-ปฐมนิเทศ-นัดพบผู้ปกครอง", "budget": 335000.0, "divs_budget": {"สำนักงาน": 250000.0, "ธรณี": 30000.0, "ชีวภาพ": 20000.0, "อาหาร": 10000.0, "ผลิต": 20000.0, "ประกอบอาหาร": 5000.0}, "divs_actual": {}, "owner": "คุณทรงกรด", "tier": "Plan", "sub_count": 1, "full_name": "โครงการรับปริญญา-ปฐมนิเทศ-นัดพบผู้ปกครอง"}, {"code": "121603", "name": "โครงการพัฒนานักศึกษาด้านวิชาการ", "budget": 4096000.0, "divs_budget": {"สำนักงาน": 1080000.0, "ธรณี": 1970000.0, "ชีวภาพ": 140000.0, "อาหาร": 495000.0, "ผลิต": 311000.0, "ประกอบอาหาร": 100000.0}, "divs_actual": {}, "owner": "", "tier": "", "sub_count": 2, "full_name": "โครงการพัฒนานักศึกษาด้านวิชาการ"}, {"code": "121604", "name": "โครงการพัฒนานักศึกษาระดับบัณฑิตศึกษา", "budget": 760000.0, "divs_budget": {"สำนักงาน": 320000.0, "ธรณี": 60000.0, "ชีวภาพ": 100000.0, "อาหาร": 180000.0, "ผลิต": 70000.0, "ประกอบอาหาร": 30000.0}, "divs_actual": {}, "owner": "", "tier": "", "sub_count": 1, "full_name": "โครงการพัฒนานักศึกษาระดับบัณฑิตศึกษา"}, {"code": "121616", "name": "โครงการสร้างรายได้จากการบริการวิชาการ", "budget": 1937000.0, "divs_budget": {"สำนักงาน": 400000.0, "ธรณี": 1512000.0, "ผลิต": 15000.0, "ประกอบอาหาร": 10000.0}, "divs_actual": {}, "owner": "คุณเฉลิมภรณ์", "tier": "Teir 2", "sub_count": 1, "full_name": "โครงการสร้างรายได้จากการบริการวิชาการ"}, {"code": "121682", "name": "โครงการจัดการบริหารระบบสารเคมีของเสียและวัตถุอันตราย", "budget": 65000.0, "divs_budget": {"สำนักงาน": 50000.0, "ธรณี": 5000.0, "ชีวภาพ": 10000.0}, "divs_actual": {}, "owner": "คุณรังรอง", "tier": "Plan", "sub_count": 1, "full_name": "โครงการจัดการบริหารระบบสารเคมีของเสียและวัตถุอันตราย"}, {"code": "123282", "name": "โครงการปรับปรุงหลักสูตรการเรียนการสอนสู่กระบวนทัศน์ใหม่", "budget": 250000.0, "divs_budget": {"สำนักงาน": 100000.0, "ธรณี": 30000.0, "ชีวภาพ": 10000.0, "อาหาร": 40000.0, "ผลิต": 40000.0, "ประกอบอาหาร": 30000.0}, "divs_actual": {}, "owner": "คุณวรการ", "tier": "Teir 1", "sub_count": 3, "full_name": "โครงการปรับปรุงหลักสูตรการเรียนการสอนสู่กระบวนทัศน์ใหม่"}, {"code": "123816", "name": "โครงการจ้างงานของนักศึกษา / TA บัณฑิตศึกษา", "budget": 180700.0, "divs_budget": {"สำนักงาน": 80000.0, "ธรณี": 20000.0, "ชีวภาพ": 20000.0, "อาหาร": 50000.0, "ผลิต": 5000.0, "ประกอบอาหาร": 5700.0}, "divs_actual": {}, "owner": "คุณวรการ", "tier": "Plan", "sub_count": 1, "full_name": "โครงการจ้างงานของนักศึกษา / TA บัณฑิตศึกษา"}, {"code": "123818", "name": "โครงการแลกเปลี่ยนนักศึกษากับมหาวิทยาลัยต่างประเทศ", "budget": 150000.0, "divs_budget": {"สำนักงาน": 100000.0, "อาหาร": 40000.0, "ผลิต": 10000.0}, "divs_actual": {}, "owner": "คุณกนกอร", "tier": "Teir 1", "sub_count": 1, "full_name": "โครงการแลกเปลี่ยนนักศึกษากับมหาวิทยาลัยต่างประเทศ"}, {"code": "124325", "name": "โครงการอนุรักษ์และประหยัดพลังงาน", "budget": 510000.0, "divs_budget": {"สำนักงาน": 400000.0, "ธรณี": 50000.0, "ชีวภาพ": 50000.0, "ผลิต": 10000.0}, "divs_actual": {}, "owner": "คุณรังรอง", "tier": "Plan", "sub_count": 1, "full_name": "โครงการอนุรักษ์และประหยัดพลังงาน"}, {"code": "125662", "name": "โครงการส่งเสริมการสร้างรายได้จากความร่วมมือกับภาคธุรกิจและอุตสาหกรรม และหน่วยงานราชการในการสร้างธุรกิจใหม่", "budget": 506000.0, "divs_budget": {"สำนักงาน": 500000.0, "อาหาร": 6000.0}, "divs_actual": {}, "owner": "คุณเฉลิมภรณ์", "tier": "Teir 2", "sub_count": 1, "full_name": "โครงการส่งเสริมการสร้างรายได้จากความร่วมมือกับภาคธุรกิจและอุตสาหกรรม และหน่วยงานราชการในการสร้างธุรกิจใหม่"}, {"code": "126689", "name": "โครงการปรับปรุงสภาพแวดล้อมและสิ่งอำนวยความสะดวก", "budget": 1700000.0, "divs_budget": {"สำนักงาน": 1520000.0, "ธรณี": 150000.0, "ชีวภาพ": 10000.0, "อาหาร": 15000.0, "ผลิต": 5000.0}, "divs_actual": {}, "owner": "คุณรังรอง", "tier": "Teir 2", "sub_count": 1, "full_name": "โครงการปรับปรุงสภาพแวดล้อมและสิ่งอำนวยความสะดวก"}, {"code": "130816", "name": "โครงการส่งเสริมสภาพแวดล้อมความเป็นนานาชาติ", "budget": 50000.0, "divs_budget": {"สำนักงาน": 50000.0}, "divs_actual": {}, "owner": "", "tier": "", "sub_count": 1, "full_name": "โครงการส่งเสริมสภาพแวดล้อมความเป็นนานาชาติ"}, {"code": "130817", "name": "โครงการเตรียมความพร้อมรับสถานการณ์ฉุกเฉินและทบทวนความรู้ด้านอัคคีภัย", "budget": 170000.0, "divs_budget": {"สำนักงาน": 170000.0}, "divs_actual": {}, "owner": "คุณอาทิตย์", "tier": "Teir 2", "sub_count": 1, "full_name": "โครงการเตรียมความพร้อมรับสถานการณ์ฉุกเฉินและทบทวนความรู้ด้านอัคคีภัย"}, {"code": "130818", "name": "โครงการสนับสนุนกระบวนการทำงานด้วยระบบสารสนเทศเพื่อการบริหารจัดการที่ดี", "budget": 100000.0, "divs_budget": {"สำนักงาน": 100000.0}, "divs_actual": {}, "owner": "คุณศรีสวรรค์", "tier": "Teir 2", "sub_count": 1, "full_name": "โครงการสนับสนุนกระบวนการทำงานด้วยระบบสารสนเทศเพื่อการบริหารจัดการที่ดี"}, {"code": "130820", "name": "โครงการกิจกรรมภายใต้ความร่วมมือ (MOU/MOA)", "budget": 620000.0, "divs_budget": {"สำนักงาน": 600000.0, "ธรณี": 20000.0}, "divs_actual": {}, "owner": "คุณกนกอร", "tier": "Teir 1", "sub_count": 1, "full_name": "โครงการกิจกรรมภายใต้ความร่วมมือ (MOU/MOA)"}, {"code": "130821", "name": "โครงการสืบสานประเพณี วัฒนธรรมอันดีและสร้างความผูกพันธ์บุคลากร คณะเทคโนโลยี", "budget": 1145000.0, "divs_budget": {"สำนักงาน": 700000.0, "ธรณี": 45000.0, "ชีวภาพ": 350000.0, "อาหาร": 35000.0, "ผลิต": 15000.0}, "divs_actual": {}, "owner": "", "tier": "", "sub_count": 1, "full_name": "โครงการสืบสานประเพณี วัฒนธรรมอันดีและสร้างความผูกพันธ์บุคลากร คณะเทคโนโลยี"}, {"code": "130822", "name": "โครงการเสริมสร้างความเข้มแข็งกับชุมชนและสังคมอย่างยั่งยืน/ อบรมเชิงปฏิบัติการ", "budget": 255000.0, "divs_budget": {"สำนักงาน": 150000.0, "ชีวภาพ": 35000.0, "อาหาร": 60000.0, "ผลิต": 10000.0}, "divs_actual": {}, "owner": "คุณเฉลิมภรณ์", "tier": "Teir 1", "sub_count": 1, "full_name": "โครงการเสริมสร้างความเข้มแข็งกับชุมชนและสังคมอย่างยั่งยืน/ อบรมเชิงปฏิบัติการ"}];
 
-let rawRows=[];let opRows=[];let opTotal=0;let projActual={};let allTx=[];let charts={};let activeTab=0;
+let rawRows=[];let opRows=[];let opTotal=0;let projActual={};let allTx=[];let charts={};let activeTab=1;
 
 // แก้ปัญหาตัวเลขมี comma ต่อท้าย เช่น "415.00,3" → 415
 function parseNum(v){
@@ -213,7 +233,28 @@ function kc(id){if(charts[id]){charts[id].destroy();delete charts[id];}}
 const mNames=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
 function mkLbl(mk){const[y,m]=mk.split('-');return mNames[parseInt(m)-1];}
 
-function switchTab(i,el){activeTab=i;document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));el.classList.add('active');renderAll();}
+function toggleTabGroup(id){
+  const g=document.getElementById(id);
+  const wasOpen=g.classList.contains('open');
+  closeTabGroups();
+  if(!wasOpen)g.classList.add('open');
+}
+function closeTabGroups(){
+  document.querySelectorAll('.tab-group').forEach(g=>g.classList.remove('open'));
+}
+document.addEventListener('click',function(e){
+  if(!e.target.closest('.tab-group')&&!e.target.closest('.tab-parent'))closeTabGroups();
+});
+function switchTab(i,el){
+  activeTab=i;
+  // reset all active states
+  document.querySelectorAll('.tab,.tab-dd-item,.tab-parent').forEach(t=>{t.classList.remove('active');t.classList.remove('active-group');});
+  // mark active
+  if(el)el.classList.add('active');
+  // ไฮไลต์ parent ถ้าเลือก dropdown item
+  if(i>=0&&i<=2)document.getElementById('tab-proj-parent').classList.add('active-group');
+  if(i>=3&&i<=5)document.getElementById('tab-op-parent').classList.add('active-group');
+  renderAll();}
 
 /* ---- Tab 4: งบดำเนินงาน ---- */
 function renderOpBudget(kpiHtml){
@@ -524,6 +565,247 @@ function renderOpBudget(kpiHtml){
 }
 
 
+/* ---- งบดำเนินงาน: สรุปรวมทุกสาขา (เหมือนแท็บโครงการ) ---- */
+function renderOpSummary(kpiHtml){
+  const rows=opRows.slice(1).filter(r=>r.length>5&&(r[0]||r[1]||'').trim());
+  const disbRows=rows.filter(r=>parseNum(r[9])>0);
+  if(!disbRows.length){
+    document.getElementById('app').innerHTML=kpiHtml+'<div class="card" style="text-align:center;padding:40px;color:var(--muted)">ยังไม่มีข้อมูลงบดำเนินงาน</div>';
+    return;
+  }
+
+  const grandTotal=disbRows.reduce((s,r)=>s+parseNum(r[9]),0);
+  const CAT_COLORS2=['#c0392b','#7c3aed','#0891b2','#059669','#d97706','#db2777','#16a085','#2980b9'];
+  const DC_BG3={สำนักงาน:'#e0f2fe',ธรณี:'#ede9fe',ชีวภาพ:'#d1fae5',อาหาร:'#fef3c7',ผลิต:'#dbeafe',ประกอบอาหาร:'#fce7f3'};
+  const DC_TXT3={สำนักงาน:'#0c4a6e',ธรณี:'#3b0764',ชีวภาพ:'#064e3b',อาหาร:'#78350f',ผลิต:'#1e3a8a',ประกอบอาหาร:'#831843'};
+
+  // รวมตามสาขา
+  const byDiv={};
+  disbRows.forEach(r=>{
+    const div=(r[1]||'').trim();
+    if(!div||!VALID_DIVS.has(div))return;
+    if(!byDiv[div])byDiv[div]={disb:0,txs:[]};
+    byDiv[div].disb+=parseNum(r[9]);
+    byDiv[div].txs.push(r);
+  });
+  const divEntries=Object.entries(byDiv).sort((a,b)=>b[1].disb-a[1].disb);
+  const maxDiv=divEntries.length?divEntries[0][1].disb:1;
+
+  // รวมตามหมวด
+  const byCat={};
+  disbRows.forEach(r=>{
+    const cat=(r[0]||'อื่นๆ').trim()||'อื่นๆ';
+    if(!byCat[cat])byCat[cat]=0;
+    byCat[cat]+=parseNum(r[9]);
+  });
+  const catEntries=Object.entries(byCat).sort((a,b)=>b[1]-a[1]);
+  const maxCat=catEntries.length?catEntries[0][1]:1;
+
+  // division cards
+  let divCards='';
+  divEntries.forEach(([d,v])=>{
+    const c=DC[d]||'#e67e22';
+    const bg=DC_BG3[d]||'#fff8f0';
+    const txt=DC_TXT3[d]||'#2d1a0e';
+    const p2=Math.min(Math.round(v.disb/grandTotal*100),100);
+    divCards+='<div style="border-radius:12px;padding:16px;border:1px solid '+c+'40;background:'+bg+';color:'+txt+'">'+
+      '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">'+
+        '<div style="width:32px;height:32px;border-radius:8px;background:'+c+';color:#fff;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;flex-shrink:0">'+d.charAt(0)+'</div>'+
+        '<span style="font-size:14px;font-weight:700">'+d+'</span>'+
+      '</div>'+
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px">'+
+        '<div style="font-size:12px;opacity:.75">ยอดเบิก</div><div style="font-size:15px;font-weight:700;text-align:right;color:'+c+'">'+fmt(v.disb)+'</div>'+
+        '<div style="font-size:12px;opacity:.75">รายการ</div><div style="font-size:15px;font-weight:700;text-align:right">'+v.txs.length+'</div>'+
+        '<div style="font-size:12px;opacity:.75">สัดส่วน</div><div style="font-size:15px;font-weight:700;text-align:right">'+p2+'%</div>'+
+        '<div style="font-size:12px;opacity:.75">เฉลี่ย</div><div style="font-size:15px;font-weight:700;text-align:right">'+(v.txs.length?fmt(Math.round(v.disb/v.txs.length)):'-')+'</div>'+
+      '</div>'+
+      '<div style="height:10px;background:rgba(255,255,255,0.5);border-radius:5px;overflow:hidden;margin-bottom:4px">'+
+        '<div style="height:100%;width:'+p2+'%;background:'+c+';border-radius:5px"></div>'+
+      '</div>'+
+      '<div style="font-size:12px;font-weight:700;text-align:right;color:'+c+'">'+p2+'% ของยอดรวม</div>'+
+    '</div>';
+  });
+
+  // รายการแยกสาขา (เหมือนโครงการ) — collapsed categories per division
+  let divSections='';
+  divEntries.forEach(([d,v],di)=>{
+    const c=DC[d]||'#e67e22';
+    if(!v.txs.length)return;
+    const catGroups={};
+    v.txs.forEach(r=>{
+      const cat=(r[0]||'อื่นๆ').trim()||'อื่นๆ';
+      if(!catGroups[cat])catGroups[cat]=[];
+      catGroups[cat].push(r);
+    });
+    const cgE=Object.entries(catGroups).sort((a,b)=>
+      b[1].reduce((s,r)=>s+parseNum(r[9]),0)-a[1].reduce((s,r)=>s+parseNum(r[9]),0)
+    );
+    let catHtml='';
+    cgE.forEach(([cat,txs],ci)=>{
+      const cc=CAT_COLORS2[ci%CAT_COLORS2.length];
+      const catT=txs.reduce((s,r)=>s+parseNum(r[9]),0);
+      const barW=Math.min(Math.round(catT/v.disb*100),100);
+      const key='ops_'+di+'_'+ci;
+      const isOpen=window._opSumExp&&window._opSumExp.has(key);
+      let txRows='';
+      if(isOpen){
+        txs.slice().sort((a,b)=>parseNum(b[9])-parseNum(a[9])).forEach(r=>{
+          const desc=(r[5]||'').replace(/"/g,'').trim();
+          const owner=(r[7]||'').trim();
+          txRows+='<tr onmouseover="this.style.background=\'#fafafa\'" onmouseout="this.style.background=\'\'">'+
+            '<td style="padding:7px 14px;font-size:13px;max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(desc.length>60?desc.slice(0,60)+'…':desc)+'</td>'+
+            '<td style="padding:7px 14px;font-size:12px;color:var(--muted);white-space:nowrap">'+(owner||'-')+'</td>'+
+            '<td style="padding:7px 14px;text-align:right;font-weight:700;color:'+cc+'">'+fmtF(parseNum(r[9]))+'</td>'+
+            '</tr>';
+        });
+      }
+      catHtml+='<div style="margin-bottom:8px;border-radius:8px;border:1px solid '+cc+'30;overflow:hidden">'+
+        '<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;background:'+(isOpen?cc+'10':'#fff')+'" data-opkey="'+key+'" onclick="(function(el){var k=el.dataset.opkey;if(!window._opSumExp)window._opSumExp=new Set();if(window._opSumExp.has(k))window._opSumExp.delete(k);else window._opSumExp.add(k);renderOpSummary(null);})(this)">'+
+          '<div style="width:4px;height:18px;border-radius:2px;background:'+cc+';flex-shrink:0"></div>'+
+          '<div style="font-size:14px;font-weight:700;color:'+cc+';flex:1">'+cat+'</div>'+
+          '<div style="width:100px;flex-shrink:0"><div style="height:8px;background:#f3f4f6;border-radius:4px;overflow:hidden"><div style="height:100%;width:'+barW+'%;background:'+cc+'"></div></div></div>'+
+          '<div style="font-size:13px;font-weight:700;color:'+cc+';min-width:90px;text-align:right">'+fmtF(catT)+' บาท</div>'+
+          '<div style="font-size:12px;color:var(--muted);min-width:60px;text-align:center">'+txs.length+' รายการ</div>'+
+          '<div style="color:'+cc+';transform:rotate('+(isOpen?'180':'0')+'deg)">▾</div>'+
+        '</div>'+
+        (isOpen?('<div style="border-top:1px solid '+cc+'20">'+
+          '<table style="width:100%;border-collapse:collapse">'+
+          '<thead><tr style="background:#f9fafb">'+
+            '<th style="padding:7px 14px;text-align:left;font-size:12px;color:var(--muted);font-weight:700;border-bottom:1px solid var(--border)">รายละเอียด</th>'+
+            '<th style="padding:7px 14px;text-align:left;font-size:12px;color:var(--muted);font-weight:700;border-bottom:1px solid var(--border)">เจ้าของเรื่อง</th>'+
+            '<th style="padding:7px 14px;text-align:right;font-size:12px;color:var(--muted);font-weight:700;border-bottom:1px solid var(--border)">ยอดเบิก (บาท)</th>'+
+          '</tr></thead>'+
+          '<tbody>'+txRows+'</tbody>'+
+          '<tfoot><tr style="background:'+cc+'08;border-top:2px solid '+cc+'30">'+
+            '<td colspan="2" style="padding:7px 14px;text-align:right;font-size:12px;font-weight:600;color:var(--muted)">รวม '+txs.length+' รายการ</td>'+
+            '<td style="padding:7px 14px;text-align:right;font-weight:700;font-size:14px;color:'+cc+'">'+fmtF(catT)+'</td>'+
+          '</tr></tfoot>'+
+          '</table></div>'):'')+
+      '</div>';
+    });
+    divSections+='<div class="card">'+
+      '<div class="card-hd" style="color:'+c+';margin-bottom:12px">'+
+        '<span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:'+c+';margin-right:8px;vertical-align:middle"></span>'+
+        d+' <span style="font-size:12px;font-weight:400;color:var(--muted)">('+v.txs.length+' รายการ | '+fmtF(v.disb)+' บาท)</span>'+
+      '</div>'+catHtml+'</div>';
+  });
+
+  // ตาราง summary สาขา
+  let sumRows='',sb=0;
+  divEntries.forEach(([d,v])=>{
+    const c=DC[d]||'#e67e22';
+    const p2=Math.min(Math.round(v.disb/grandTotal*100),100);sb+=v.disb;
+    sumRows+='<tr>'+
+      '<td style="text-align:left"><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:'+c+';margin-right:5px;vertical-align:middle"></span>'+d+'</td>'+
+      '<td style="color:'+c+';font-weight:700">'+fmtF(v.disb)+'</td>'+
+      '<td>'+v.txs.length+' รายการ</td>'+
+      '<td><span class="pill pg">'+p2+'%</span></td>'+
+      '<td><div style="height:8px;background:#f3f4f6;border-radius:4px;overflow:hidden"><div style="height:100%;width:'+p2+'%;background:'+c+';border-radius:4px"></div></div></td>'+
+    '</tr>';
+  });
+  sumRows+='<tr class="tr-sum"><td style="text-align:left">รวมทั้งหมด</td><td>'+fmtF(grandTotal)+'</td><td>'+disbRows.length+' รายการ</td><td></td><td></td></tr>';
+
+  if(!window._opSumExp)window._opSumExp=new Set();
+
+  // render หน้า (kpiHtml อาจเป็น null ถ้าเรียกจาก collapse click)
+  const appEl=document.getElementById('app');
+  if(!kpiHtml){
+    // re-render เฉพาะส่วน divSections ที่เปลี่ยน
+    const el=document.getElementById('op-sum-divs');
+    if(el){el.innerHTML=divSections;return;}
+  }
+
+  // KPI งบดำเนินงาน
+  const kpi=kpiHtml||document.querySelector('.kpi-row')?'':'';
+  appEl.innerHTML=(kpiHtml||'')+
+    '<div class="g2">'+
+      '<div class="card">'+
+        '<div class="card-hd">สรุปการเบิกจ่ายแยกตามสาขา</div>'+
+        '<div class="tw"><table class="dt"><thead><tr>'+
+          '<th style="text-align:left">สาขา</th><th>เบิกแล้ว (บาท)</th><th>รายการ</th><th>สัดส่วน</th><th style="min-width:100px">ความคืบหน้า</th>'+
+        '</tr></thead><tbody>'+sumRows+'</tbody></table></div>'+
+      '</div>'+
+      '<div class="card">'+
+        '<div class="card-hd">สัดส่วนตามสาขา</div>'+
+        '<div class="chart-wrap" style="height:280px"><canvas id="opSumDonut"></canvas></div>'+
+      '</div>'+
+    '</div>'+
+    '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;margin-bottom:18px">'+divCards+'</div>'+
+    '<div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:14px;display:flex;align-items:center;gap:8px">'+
+      '<span style="display:block;width:5px;height:20px;background:#e67e22;border-radius:3px"></span>รายการแยกตามสาขาและหมวดหมู่'+
+    '</div>'+
+    '<div id="op-sum-divs">'+divSections+'</div>';
+
+  kc('opSumDonut');
+  if(divEntries.length){
+    charts['opSumDonut']=new Chart(document.getElementById('opSumDonut'),{
+      type:'doughnut',
+      data:{labels:divEntries.map(([d])=>d),datasets:[{data:divEntries.map(([,v])=>v.disb),backgroundColor:divEntries.map(([d])=>DC[d]||'#e67e22'),borderWidth:2,borderColor:'#fff'}]},
+      options:{responsive:true,maintainAspectRatio:false,cutout:'55%',plugins:{legend:{position:'bottom',labels:{font:{family:'Sarabun',size:12},padding:14}},tooltip:{callbacks:{label:c=>c.label+': ฿'+Math.round(c.raw).toLocaleString('th-TH')+' ('+Math.round(c.raw/grandTotal*100)+'%)'}}}}
+    });
+  }
+}
+
+/* ---- งบดำเนินงาน: แนวโน้มรายเดือน ---- */
+function renderOpTrend(kpiHtml){
+  const rows=opRows.slice(1).filter(r=>r.length>5&&(r[0]||r[1]||'').trim());
+  const disbRows=rows.filter(r=>parseNum(r[9])>0);
+  if(!disbRows.length){
+    document.getElementById('app').innerHTML=(kpiHtml||'')+'<div class="card" style="text-align:center;padding:40px;color:var(--muted)">ยังไม่มีข้อมูล</div>';
+    return;
+  }
+
+  const mN=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+  const byMonth={};const byMonthDiv={};
+  disbRows.forEach(r=>{
+    const dtRaw=r[6]||r[4]||r[3]||'';
+    const dt=new Date(dtRaw);
+    if(isNaN(dt)||dt.getFullYear()<2020)return;
+    const mk=dt.getFullYear()+'-'+(dt.getMonth()+1).toString().padStart(2,'0');
+    if(!byMonth[mk])byMonth[mk]=0;
+    byMonth[mk]+=parseNum(r[9]);
+    const div=(r[1]||'').trim();
+    if(div&&VALID_DIVS.has(div)){
+      if(!byMonthDiv[div])byMonthDiv[div]={};
+      if(!byMonthDiv[div][mk])byMonthDiv[div][mk]=0;
+      byMonthDiv[div][mk]+=parseNum(r[9]);
+    }
+  });
+  const allKeys=[...new Set([...Object.keys(byMonth),...Object.values(byMonthDiv).flatMap(v=>Object.keys(v))])].sort();
+  const mLabels=allKeys.map(mk=>mN[parseInt(mk.split('-')[1])-1]);
+  let cum=0;const cumVals=allKeys.map(mk=>{cum+=(byMonth[mk]||0);return cum;});
+
+  document.getElementById('app').innerHTML=(kpiHtml||'')+
+    '<div class="g2">'+
+      '<div class="card"><div class="card-hd">ยอดเบิกจ่ายงบดำเนินงานรายเดือน</div><div class="chart-wrap" style="height:260px"><canvas id="opTrendBar"></canvas></div></div>'+
+      '<div class="card"><div class="card-hd">ยอดสะสม</div><div class="chart-wrap" style="height:260px"><canvas id="opTrendCumul"></canvas></div></div>'+
+    '</div>'+
+    '<div class="card"><div class="card-hd">รายเดือนแยกตามสาขา</div><div class="chart-wrap" style="height:280px"><canvas id="opTrendStack"></canvas></div></div>';
+
+  kc('opTrendBar');
+  charts['opTrendBar']=new Chart(document.getElementById('opTrendBar'),{
+    type:'bar',
+    data:{labels:mLabels,datasets:[{label:'เบิกจ่าย',data:allKeys.map(mk=>byMonth[mk]||0),backgroundColor:'#e67e22',borderRadius:5,borderSkipped:false}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>'฿'+Math.round(c.raw).toLocaleString('th-TH')}}},scales:{x:{grid:{display:false},ticks:{font:{size:11,family:'Sarabun'}}},y:{grid:{color:'rgba(0,0,0,0.04)'},ticks:{font:{size:11,family:'Sarabun'},callback:v=>fmt(v)}}}}
+  });
+
+  kc('opTrendCumul');
+  charts['opTrendCumul']=new Chart(document.getElementById('opTrendCumul'),{
+    type:'line',
+    data:{labels:mLabels,datasets:[{label:'สะสม',data:cumVals,borderColor:'#7c3aed',backgroundColor:'rgba(124,58,237,0.08)',borderWidth:2,fill:true,tension:0.3,pointRadius:3,pointBackgroundColor:'#7c3aed'}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>'฿'+Math.round(c.raw).toLocaleString('th-TH')}}},scales:{x:{grid:{display:false},ticks:{font:{size:11,family:'Sarabun'}}},y:{grid:{color:'rgba(0,0,0,0.04)'},ticks:{font:{size:11,family:'Sarabun'},callback:v=>fmt(v)}}}}
+  });
+
+  kc('opTrendStack');
+  const ds=Object.entries(byMonthDiv).map(([d,mv])=>({label:d,data:allKeys.map(mk=>mv[mk]||0),backgroundColor:(DC[d]||'#e67e22')+'cc',borderRadius:3}));
+  charts['opTrendStack']=new Chart(document.getElementById('opTrendStack'),{
+    type:'bar',
+    data:{labels:mLabels,datasets:ds},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{family:'Sarabun',size:12},padding:12}},tooltip:{callbacks:{label:c=>c.dataset.label+': ฿'+Math.round(c.raw).toLocaleString('th-TH')}}},scales:{x:{stacked:true,grid:{display:false},ticks:{font:{size:11,family:'Sarabun'}}},y:{stacked:true,grid:{color:'rgba(0,0,0,0.04)'},ticks:{font:{size:11,family:'Sarabun'},callback:v=>fmt(v)}}}}
+  });
+}
+
+
 function buildCodeFilter(){
   const fc=document.getElementById('fCode');if(!fc)return;const cur=fc.value;
   fc.innerHTML='<option value="">&#8212; ทุกโครงการ &#8212;</option>';
@@ -616,7 +898,12 @@ async function loadSheets(){
       if(r.length<=5||(!(r[0]||'').trim()&&!(r[1]||'').trim()))return;
       opTotal+=parseNum(r[9]);
     });
-    buildCodeFilter();renderAll();
+    buildCodeFilter();
+    // เริ่มต้นที่โครงการ-สรุป
+    // activeTab starts at 0
+    const pp=document.getElementById('tab-proj-parent');
+    if(pp)pp.classList.add('active-group');
+    renderAll();
   }catch(e){
     document.getElementById('lupd').textContent='โหลดไม่สำเร็จ';
     document.getElementById('app').innerHTML='<div class="err"><strong>โหลดไม่สำเร็จ:</strong> '+e.message+'</div>';
@@ -652,8 +939,11 @@ function renderAll(){
   </div>`;
   if(activeTab===0)renderOverview(kpiHtml,data);
   else if(activeTab===1)renderProjects(kpiHtml,data);
+
   else if(activeTab===2)renderTrend(kpiHtml,data);
   else if(activeTab===3)renderOpBudget(kpiHtml);
+  else if(activeTab===4)renderOpSummary(kpiHtml);
+  else if(activeTab===5)renderOpTrend(kpiHtml);
 }
 
 function renderOverview(kpiHtml,data){
