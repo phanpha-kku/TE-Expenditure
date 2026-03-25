@@ -836,9 +836,15 @@ function openOpDetail(idx){
   const maxDivAmt=catDivEntries.length?catDivEntries[0][1]:1;
 
   // รายเดือนของหมวดนี้
+  if(allInCat.length>0)console.log('Sample op row cols:', allInCat[0].map((v,i)=>'['+i+']='+v).join(', '));
   const catMonths={};
   allInCat.forEach(r=>{
-    const dtRaw=r[6]||r[4]||r[3]||'';
+    // ลองทุก col หาวันที่
+    let dtRaw='';
+    for(let ci=0;ci<r.length;ci++){
+      const v=(r[ci]||'').trim();
+      if(v&&!isNaN(new Date(v))&&new Date(v).getFullYear()>=2020){dtRaw=v;break;}
+    }
     const dt=new Date(dtRaw);
     if(isNaN(dt)||dt.getFullYear()<2020)return;
     const mk=dt.getFullYear()+'-'+(dt.getMonth()+1).toString().padStart(2,'0');
