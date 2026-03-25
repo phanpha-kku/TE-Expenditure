@@ -515,14 +515,23 @@ async function loadSheets(){
   document.getElementById('lupd').textContent='กำลังโหลด...';
   try{
     const url='https://docs.google.com/spreadsheets/d/'+SHEET_ID+'/export?format=csv&gid='+GID+'&t='+Date.now();
-    const urlOp='https://docs.google.com/spreadsheets/d/'+SHEET_ID+'/export?format=csv&gid='+GID_OP+'&t='+Date.now();
-    const [r, rOp]=await Promise.all([fetch(url),fetch(urlOp)]);
+    // fetch โครงการก่อน
+    const r=await fetch(url);
     if(!r.ok)throw new Error('HTTP '+r.status);
     rawRows=parseCSV(await r.text());
-    opRows=rOp.ok?parseCSV(await rOp.text()):[];
-    console.log('opRows length:', opRows.length, '| status:', rOp.status, '| GID_OP:', GID_OP);
-    if(opRows.length>0) console.log('opRows[0]:', opRows[0]);
-    if(opRows.length>1) console.log('opRows[1]:', opRows[1]);
+    // fetch งบดำเนินงาน แยก + timeout 8 วินาที
+    try{
+      const controller=new AbortController();
+      const timer=setTimeout(()=>controller.abort(),8000);
+      const urlOp='https://docs.google.com/spreadsheets/d/'+SHEET_ID+'/export?format=csv&gid='+GID_OP+'&t='+Date.now();
+      const rOp=await fetch(urlOp,{signal:controller.signal});
+      clearTimeout(timer);
+      opRows=rOp.ok?parseCSV(await rOp.text()):[];
+      console.log('opRows length:', opRows.length, '| GID_OP:', GID_OP);
+    }catch(e){
+      console.warn('งบดำเนินงาน fetch failed:', e.message);
+      opRows=[];
+    }
     projActual={};allTx=[];
     rawRows.slice(1).forEach(row=>{
       if(!row[0]||!row[0].trim())return;
