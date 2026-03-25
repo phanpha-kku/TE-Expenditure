@@ -297,17 +297,17 @@ function renderOpBudget(kpiHtml){
       out+=`<div style="margin-bottom:14px;border-radius:12px;border:1px solid ${cc}30;overflow:hidden">
         <div style="display:flex;align-items:center;gap:10px;padding:12px 16px;background:${cc}10;border-bottom:1px solid ${cc}20">
           <div style="width:4px;height:20px;border-radius:2px;background:${cc};flex-shrink:0"></div>
-          <div style="font-size:14px;font-weight:700;color:${cc};flex:1">${cat}</div>
-          <div style="font-size:13px;font-weight:700;color:${cc}">${fmtF(catTotal)} บาท</div>
-          <div style="font-size:12px;color:var(--muted)">(${txs.length} รายการ)</div>
+          <div style="font-size:16px;font-weight:700;color:${cc};flex:1">${cat}</div>
+          <div style="font-size:15px;font-weight:700;color:${cc}">${fmtF(catTotal)} บาท</div>
+          <div style="font-size:13px;color:var(--muted)">(${txs.length} รายการ)</div>
         </div>
         <div>
-          <table style="width:100%;border-collapse:collapse;font-size:12px">
+          <table style="width:100%;border-collapse:collapse;font-size:14px">
             <thead><tr style="background:#f9fafb">
-              <th style="padding:7px 14px;text-align:left;font-size:11px;color:var(--muted);font-weight:700;border-bottom:1px solid var(--border)">สาขา</th>
-              <th style="padding:7px 14px;text-align:left;font-size:11px;color:var(--muted);font-weight:700;border-bottom:1px solid var(--border)">รายละเอียด</th>
-              <th style="padding:7px 14px;text-align:left;font-size:11px;color:var(--muted);font-weight:700;border-bottom:1px solid var(--border)">เจ้าของเรื่อง</th>
-              <th style="padding:7px 14px;text-align:right;font-size:11px;color:var(--muted);font-weight:700;border-bottom:1px solid var(--border)">ยอดเบิก (บาท)</th>
+              <th style="padding:7px 14px;text-align:left;font-size:13px;color:var(--muted);font-weight:700;border-bottom:1px solid var(--border)">สาขา</th>
+              <th style="padding:7px 14px;text-align:left;font-size:13px;color:var(--muted);font-weight:700;border-bottom:1px solid var(--border)">รายละเอียด</th>
+              <th style="padding:7px 14px;text-align:left;font-size:13px;color:var(--muted);font-weight:700;border-bottom:1px solid var(--border)">เจ้าของเรื่อง</th>
+              <th style="padding:7px 14px;text-align:right;font-size:13px;color:var(--muted);font-weight:700;border-bottom:1px solid var(--border)">ยอดเบิก (บาท)</th>
             </tr></thead>
             <tbody>
               ${txs.sort((a,b)=>parseNum(b[9])-parseNum(a[9])).map(r=>{
@@ -316,15 +316,15 @@ function renderOpBudget(kpiHtml){
                 const owner=(r[7]||'').trim();
                 const dc=DC[div]||'#6b7280';
                 return`<tr style="border-bottom:1px solid #f9fafb" onmouseover="this.style.background='#fafafa'" onmouseout="this.style.background=''">
-                  <td style="padding:7px 14px">${div?`<span style="background:${dc}18;color:${dc};padding:2px 7px;border-radius:8px;font-size:11px;font-weight:600">${div}</span>`:'-'}</td>
-                  <td style="padding:7px 14px;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${desc}">${desc.length>55?desc.slice(0,55)+'…':desc}</td>
-                  <td style="padding:7px 14px;color:var(--muted);font-size:11px;white-space:nowrap">${owner||'-'}</td>
-                  <td style="padding:7px 14px;text-align:right;font-weight:700;color:${cc}">${fmtF(parseNum(r[9]))}</td>
+                  <td style="padding:7px 14px">${div?`<span style="background:${dc}18;color:${dc};padding:3px 9px;border-radius:8px;font-size:13px;font-weight:600">${div}</span>`:'-'}</td>
+                  <td style="padding:8px 14px;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px" title="${desc}">${desc.length>55?desc.slice(0,55)+'…':desc}</td>
+                  <td style="padding:8px 14px;color:var(--muted);font-size:13px;white-space:nowrap">${owner||'-'}</td>
+                  <td style="padding:8px 14px;text-align:right;font-weight:700;color:${cc};font-size:14px">${fmtF(parseNum(r[9]))}</td>
                 </tr>`;
               }).join('')}
               <tr style="background:${cc}08;border-top:2px solid ${cc}30">
-                <td colspan="3" style="padding:7px 14px;text-align:right;font-size:12px;font-weight:600;color:var(--muted)">รวม ${txs.length} รายการ</td>
-                <td style="padding:7px 14px;text-align:right;font-weight:700;color:${cc}">${fmtF(catTotal)}</td>
+                <td colspan="3" style="padding:8px 14px;text-align:right;font-size:13px;font-weight:600;color:var(--muted)">รวม ${txs.length} รายการ</td>
+                <td style="padding:8px 14px;text-align:right;font-weight:700;color:${cc};font-size:14px">${fmtF(catTotal)}</td>
               </tr>
             </tbody>
           </table>
@@ -387,7 +387,7 @@ function renderOpBudget(kpiHtml){
           <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:${cc}10;font-size:12px;font-weight:700;color:${cc}">
             <span>${cat}</span><span style="margin-left:auto">${fmtF(catTotal)} บาท (${txs.length} รายการ)</span>
           </div>
-          <table style="width:100%;border-collapse:collapse;font-size:12px">
+          <table style="width:100%;border-collapse:collapse;font-size:14px">
             <tbody>
               ${txs.sort((a,b)=>parseNum(b[9])-parseNum(a[9])).map(r=>{
                 const desc=(r[5]||'').replace(/"/g,'').trim();
@@ -690,12 +690,17 @@ function renderOverview(kpiHtml,data){
   });
 
   // filter state สำหรับโครงการ (global)
-  window._pFDiv=''; window._pFCode='';
+  window._pFDiv=''; window._pFCode=''; window._pFOwner='';
 
   function renderDivProjs(){
     const fData=data.filter(p=>{
       if(window._pFCode&&p.code!==window._pFCode)return false;
       if(window._pFDiv&&!p.divs_budget[window._pFDiv])return false;
+      if(window._pFOwner){
+        // ค้นหาเจ้าของเรื่องจาก allTx (col I = index 8 ของ Google Sheets)
+        const hasTx=allTx.some(t=>t.code===p.code&&(t.owner||'').includes(window._pFOwner));
+        if(!hasTx)return false;
+      }
       return true;
     });
     let out='';
@@ -778,7 +783,11 @@ function renderOverview(kpiHtml,data){
       <option value="">&#8212; ทุกสาขา &#8212;</option>
       ${[...VALID_DIVS].map(d=>`<option value="${d}">${d}</option>`).join('')}
     </select>
-    <button onclick="window._pFDiv='';window._pFCode='';['pf-div','pf-code'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=''});renderDivProjs()" class="fbtn">&#10005; ล้าง</button>
+    <input id="pf-owner" type="text" placeholder="🔍 ค้นหาเจ้าของเรื่อง..."
+      style="font-family:Sarabun,sans-serif;font-size:13px;padding:6px 12px;border-radius:8px;border:1px solid var(--border);min-width:200px;outline:none;flex:1"
+      oninput="window._pFOwner=this.value;renderDivProjs()"
+      onfocus="this.style.borderColor='var(--primary)'" onblur="this.style.borderColor='var(--border)'">
+    <button onclick="window._pFDiv='';window._pFCode='';window._pFOwner='';['pf-div','pf-code','pf-owner'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=''});renderDivProjs()" class="fbtn">&#10005; ล้าง</button>
     <span id="proj-filter-info" style="font-size:12px;color:var(--primary);background:#fde8e8;padding:3px 10px;border-radius:20px;font-weight:600"></span>
   </div>
 
@@ -788,7 +797,7 @@ function renderOverview(kpiHtml,data){
   const de=Object.entries(divSum).filter(([,v])=>v.b>0);
   if(de.length){charts['donutChart']=new Chart(document.getElementById('donutChart'),{type:'doughnut',data:{labels:de.map(([d])=>d),datasets:[{data:de.map(([,v])=>v.b),backgroundColor:de.map(([d])=>DC[d]||'#6b7280'),borderWidth:2,borderColor:'#fff'}]},options:{responsive:true,maintainAspectRatio:false,cutout:'55%',plugins:{legend:{position:'bottom',labels:{font:{family:'Sarabun',size:12},padding:14}},tooltip:{callbacks:{label:c=>`${c.label}: ฿${Math.round(c.raw).toLocaleString('th-TH')}`}}}}});}
   // reset filter และ render
-  window._pFDiv='';window._pFCode='';
+  window._pFDiv='';window._pFCode='';window._pFOwner='';
   renderDivProjs();
 }
 
