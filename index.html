@@ -186,6 +186,7 @@ table.dt tr:hover td{background:#fafafa}
 const SHEET_ID='1tM_y7KOf2zNVDVBgadMDgdE3VQssWZmk4cDtiXWbkeE';
 const GID='1336310880';
 const GID_OP='0'; // งบดำเนินงาน - col J (index 9) = ยอดเบิก
+const OP_CSV_URL='https://docs.google.com/spreadsheets/d/e/2PACX-1vSi6GccWw9qdEidFzF_isiV2rYQkniy1iX4DB_cYe-C2CVlNdCH21yX56EvlkDm8PJGUHx_wwJu7Ltq/pub?gid=0&single=true&output=csv'; // Published CSV URL สำหรับ sheet งบดำเนินงาน
 const DC={สำนักงาน:'#0891b2',ธรณี:'#7c3aed',ชีวภาพ:'#059669',อาหาร:'#d97706',ผลิต:'#2563eb',ประกอบอาหาร:'#db2777'};
 const DC_BG={สำนักงาน:'#e0f2fe',ธรณี:'#ede9fe',ชีวภาพ:'#d1fae5',อาหาร:'#fef3c7',ผลิต:'#dbeafe',ประกอบอาหาร:'#fce7f3'};
 const DC_TXT={สำนักงาน:'#0c4a6e',ธรณี:'#3b0764',ชีวภาพ:'#064e3b',อาหาร:'#78350f',ผลิต:'#1e3a8a',ประกอบอาหาร:'#831843'};
@@ -528,7 +529,7 @@ async function loadSheets(){
     try{
       const controller=new AbortController();
       const timer=setTimeout(()=>controller.abort(),8000);
-      const urlOp='https://docs.google.com/spreadsheets/d/'+SHEET_ID+'/export?format=csv&gid='+GID_OP+'&t='+Date.now();
+      const urlOp=OP_CSV_URL+'&t='+Date.now();
       const rOp=await fetch(urlOp,{signal:controller.signal});
       clearTimeout(timer);
       opRows=rOp.ok?parseCSV(await rOp.text()):[];
