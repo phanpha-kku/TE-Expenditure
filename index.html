@@ -376,6 +376,31 @@ function renderOpBudget(kpiHtml){
   }
 
 
+  // Division cards สำหรับงบดำเนินงาน
+  let divCards2='';
+  divEntries.forEach(function([d,v]){
+    const c=DC[d]||'#e67e22';
+    const bg=DC_BG2[d]||'#fff8f0';
+    const txt=DC_TXT2[d]||'#2d1a0e';
+    const p2=grandTotal>0?Math.min(Math.round(v.disb/grandTotal*100),100):0;
+    divCards2+='<div style="border-radius:12px;padding:16px;border:1px solid '+c+'40;background:'+bg+';color:'+txt+'">'+
+      '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">'+
+        '<div style="width:32px;height:32px;border-radius:8px;background:'+c+';color:#fff;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;flex-shrink:0">'+d.charAt(0)+'</div>'+
+        '<span style="font-size:14px;font-weight:700">'+d+'</span>'+
+      '</div>'+
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px">'+
+        '<div style="font-size:11px;opacity:.75">ยอดเบิก</div><div style="font-size:14px;font-weight:700;text-align:right;color:'+c+'">'+fmt(v.disb)+'</div>'+
+        '<div style="font-size:11px;opacity:.75">จำนวนรายการ</div><div style="font-size:14px;font-weight:700;text-align:right">'+v.txs.length+'</div>'+
+        '<div style="font-size:11px;opacity:.75">สัดส่วนรวม</div><div style="font-size:14px;font-weight:700;text-align:right">'+p2+'%</div>'+
+        '<div style="font-size:11px;opacity:.75">เฉลี่ย/รายการ</div><div style="font-size:14px;font-weight:700;text-align:right">'+(v.txs.length?fmt(Math.round(v.disb/v.txs.length)):'-')+'</div>'+
+      '</div>'+
+      '<div style="height:10px;background:rgba(255,255,255,0.5);border-radius:5px;overflow:hidden;margin-bottom:4px">'+
+        '<div style="height:100%;width:'+p2+'%;background:'+c+';border-radius:5px"></div>'+
+      '</div>'+
+      '<div style="font-size:12px;font-weight:700;text-align:right;color:'+c+'">'+p2+'% ของยอดรวม</div>'+
+    '</div>';
+  });
+
   window.renderCats=renderCats; // assign ก่อน inject HTML
   document.getElementById('app').innerHTML=kpiHtml+`
   <!-- KPI -->
