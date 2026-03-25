@@ -291,7 +291,7 @@ function renderOpBudget(kpiHtml){
     );
     const filtTotal=fRows.reduce((s,r)=>s+parseNum(r[9]),0);
     const maxCatVal=gEntries.length?gEntries[0][1].reduce((s,r)=>s+parseNum(r[9]),0):1;
-    if(!window._opExp)window._opExp=new Set();
+    window._opExp=new Set(); // reset เมื่อ render ใหม่
 
     let out='';
     gEntries.forEach(([cat,txs],ci)=>{
@@ -319,7 +319,7 @@ function renderOpBudget(kpiHtml){
 
       out+=`<div style="margin-bottom:12px;border-radius:12px;border:2px solid ${isOpen?cc+'80':cc+'30'};overflow:hidden;transition:border-color .2s">
         <div style="display:flex;align-items:center;gap:14px;padding:14px 18px;cursor:pointer;background:${isOpen?cc+'12':'#fff'};transition:background .2s"
-          data-catidx="${ci}" onclick="(function(el){var i=el.dataset.catidx;if(window._opExp.has(i))window._opExp.delete(i);else window._opExp.add(i);renderCats();})(this)">
+          data-catidx="${ci}" onclick="(function(el){var i=el.dataset.catidx;if(window._opExp.has(i))window._opExp.delete(i);else window._opExp.add(i);if(window.renderCats)window.renderCats();})(this)">
           <div style="width:5px;height:22px;border-radius:3px;background:${cc};flex-shrink:0"></div>
           <div style="font-size:15px;font-weight:700;color:${cc};min-width:100px;flex:0 0 auto">${cat}</div>
           <div style="flex:1;height:14px;background:#f3f4f6;border-radius:7px;overflow:hidden;min-width:80px">
@@ -354,6 +354,7 @@ function renderOpBudget(kpiHtml){
   }
 
 
+  window.renderCats=renderCats; // assign ก่อน inject HTML
   document.getElementById('app').innerHTML=kpiHtml+`
   <!-- KPI -->
   <div class="kpi-row" style="margin-bottom:18px">
@@ -435,17 +436,17 @@ function renderOpBudget(kpiHtml){
 
   <div style="background:#fff;border-radius:12px;border:1px solid var(--border);padding:14px 18px;margin-bottom:14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
     <span style="font-size:13px;font-weight:700;color:var(--muted)">กรองรายการ:</span>
-    <select id="op-fdiv" class="fs" onchange="window._opFDiv=this.value;renderCats()" style="min-width:140px">
+    <select id="op-fdiv" class="fs" onchange="window._opFDiv=this.value;if(window.renderCats)window.renderCats()" style="min-width:140px">
       <option value="">— ทุกสาขา —</option>
       ${[...VALID_DIVS].map(d=>`<option value="${d}">${d}</option>`).join('')}
     </select>
-    <select id="op-fcat" class="fs" onchange="window._opFCat=this.value;renderCats()" style="min-width:160px">
+    <select id="op-fcat" class="fs" onchange="window._opFCat=this.value;if(window.renderCats)window.renderCats()" style="min-width:160px">
       <option value="">— ทุกหมวด —</option>
       ${catEntries.map(([c])=>`<option value="${c}">${c}</option>`).join('')}
     </select>
     <input id="op-fsearch" type="text" placeholder="🔍 ค้นหาเจ้าของเรื่อง..."
       style="font-family:Sarabun,sans-serif;font-size:13px;padding:6px 12px;border-radius:8px;border:1px solid var(--border);min-width:200px;outline:none;flex:1"
-      oninput="window._opFOwner=this.value;renderCats()"
+      oninput="window._opFOwner=this.value;if(window.renderCats)window.renderCats()"
       onfocus="this.style.borderColor='var(--primary)'" onblur="this.style.borderColor='var(--border)'">
     <button onclick="window._opFDiv='';window._opFCat='';window._opFOwner='';['op-fdiv','op-fcat','op-fsearch'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=''});renderCats()" class="fbtn">✕ ล้าง</button>
     <span id="op-info" style="font-size:12px;color:#e67e22;background:#fff3e0;padding:3px 10px;border-radius:20px;font-weight:600"></span>
