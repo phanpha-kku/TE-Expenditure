@@ -246,76 +246,237 @@ function switchTab(i,el){activeTab=i;document.querySelectorAll('.tab').forEach(t
 /* ---- Tab 4: งบดำเนินงาน ---- */
 function renderOpBudget(kpiHtml){
   const rows=opRows.slice(1).filter(r=>r[0]&&r[0].trim());
+  const disbRows=rows.filter(r=>parseNum(r[9])>0);
 
-  // รวมตาม col A (หมวดรายการ)
+  // col mapping: A=0(หมวด), B=1(สังกัด), F=5(รายละเอียด), I=8(เจ้าของ), J=9(เบิก)
+  // รวมตามสังกัด (col B)
+  const byDiv={};
+  disbRows.forEach(r=>{
+    const div=(r[1]||'อื่นๆ').trim()||'อื่นๆ';
+    if(!VALID_DIVS.has(div))return;
+    if(!byDiv[div])byDiv[div]={disb:0,txs:[]};
+    byDiv[div].disb+=parseNum(r[9]);
+    byDiv[div].txs.push(r);
+  });
+  const divEntries=Object.entries(byDiv).sort((a,b)=>b[1].disb-a[1].disb);
+
+  // รวมตามหมวด (col A)
   const byCat={};
-  rows.forEach(r=>{
-    const cat=(r[0]||'').trim()||'อื่นๆ';
-    if(!byCat[cat])byCat[cat]={budget:0,disb:0,rows:[]};
-    byCat[cat].budget+=parseNum(r[8]); // col I = งบประมาณ (ถ้ามี)
-    byCat[cat].disb+=parseNum(r[9]);   // col J = ยอดเบิก
-    byCat[cat].rows.push(r);
+  disbRows.forEach(r=>{
+    const cat=(r[0]||'อื่นๆ').trim()||'อื่นๆ';
+    if(!byCat[cat])byCat[cat]=0;
+    byCat[cat]+=parseNum(r[9]);
   });
+  const catEntries=Object.entries(byCat).sort((a,b)=>b[1]-a[1]);
+  const maxCat=catEntries.length?catEntries[0][1]:1;
 
-  const catEntries=Object.entries(byCat).sort((a,b)=>b[1].disb-a[1].disb);
-  const grandTotal=catEntries.reduce((s,[,v])=>s+v.disb,0);
-  const maxDisb=catEntries.length?catEntries[0][1].disb:1;
+  // รวมรายเดือน
+  const byMonth={};
+  disbRows.forEach(r=>{
+    // หาวันที่จาก col ต่างๆ
+    const dtRaw=r[6]||r[4]||r[3]||'';
+    const dt=new Date(dtRaw);
+    if(isNaN(dt)||dt.getFullYear()<2020)return;
+    const mk=dt.getFullYear()+'-'+(dt.getMonth()+1).toString().padStart(2,'0');
+    if(!byMonth[mk])byMonth[mk]={total:0,divs:{}};
+    byMonth[mk].total+=parseNum(r[9]);
+    const div=(r[1]||'').trim();
+    if(div&&VALID_DIVS.has(div)){
+      if(!byMonth[mk].divs[div])byMonth[mk].divs[div]=0;
+      byMonth[mk].divs[div]+=parseNum(r[9]);
+    }
+  });
+  const mKeys=Object.keys(byMonth).sort();
+  const mN=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+  const mLabels=mKeys.map(mk=>mN[parseInt(mk.split('-')[1])-1]);
 
-  // สร้างตารางรายการทั้งหมด
-  const recentOp=rows.filter(r=>parseNum(r[9])>0)
-    .sort((a,b)=>parseNum(b[9])-parseNum(a[9])).slice(0,20);
+  const grandTotal=divEntries.reduce((s,[,v])=>s+v.disb,0);
+  const maxDiv=divEntries.length?divEntries[0][1].disb:1;
 
-  let catRows='';
-  catEntries.forEach(([cat,v])=>{
-    if(v.disb<=0&&v.budget<=0)return;
-    const p=v.budget>0?Math.min(Math.round(v.disb/v.budget*100),999):0;
-    catRows+=`<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;padding:8px 10px;background:#fafafa;border-radius:8px">
-      <div style="flex:1;font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${cat}">${cat.length>35?cat.slice(0,35)+'…':cat}</div>
-      <div style="width:140px;flex-shrink:0">
-        <div style="height:10px;background:#f3f4f6;border-radius:5px;overflow:hidden">
-          <div style="height:100%;width:${Math.min(Math.round(v.disb/maxDisb*100),100)}%;background:#e67e22;border-radius:5px"></div>
-        </div>
+  // top 5 by disb
+  const top5=disbRows.sort((a,b)=>parseNum(b[9])-parseNum(a[9])).slice(0,5);
+
+  // op detail panel state
+  let opActiveDiv='';
+
+  function renderOpDetail(divName){
+    opActiveDiv=divName;
+    const txList=divName
+      ?disbRows.filter(r=>((r[1]||'').trim())===divName)
+      :disbRows;
+    txList.sort((a,b)=>parseNum(b[9])-parseNum(a[9]));
+    const total=txList.reduce((s,r)=>s+parseNum(r[9]),0);
+    let txRows='';
+    txList.slice(0,50).forEach(r=>{
+      const disb=parseNum(r[9]);
+      const div=(r[1]||'').trim();
+      const desc=(r[5]||'').replace(/"/g,'').trim();
+      const owner=(r[8]||'').trim();
+      const c=DC[div]||'#e67e22';
+      txRows+=`<tr>
+        <td style="font-size:11px;color:var(--muted)">${(r[0]||'').slice(0,18)}</td>
+        <td>${div?`<span style="background:${c}18;color:${c};padding:2px 6px;border-radius:7px;font-size:11px;font-weight:600">${div}</span>`:'-'}</td>
+        <td style="font-size:12px;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${desc}">${desc.length>45?desc.slice(0,45)+'…':desc}</td>
+        <td style="font-size:11px;color:var(--muted);white-space:nowrap">${owner||'-'}</td>
+        <td style="text-align:right;font-weight:700;color:#e67e22;font-size:13px">${fmtF(disb)}</td>
+      </tr>`;
+    });
+
+    document.getElementById('dp-title').textContent='งบดำเนินงาน'+(divName?' — '+divName:'');
+    document.getElementById('dp-body').innerHTML=`
+      <div class="dp-code" style="color:#e67e22">${divName||'ทุกสาขา'}</div>
+      <div class="dp-name">รายการเบิกจ่ายงบดำเนินงาน</div>
+      <div class="dp-kpis">
+        <div class="dp-kpi"><div class="dp-kpi-lbl">จำนวนรายการ</div><div class="dp-kpi-val" style="color:#e67e22">${txList.length}</div></div>
+        <div class="dp-kpi"><div class="dp-kpi-lbl">ยอดเบิกรวม</div><div class="dp-kpi-val" style="color:#e67e22">${fmtF(total)}</div></div>
+        <div class="dp-kpi"><div class="dp-kpi-lbl">เฉลี่ยต่อรายการ</div><div class="dp-kpi-val">${txList.length?fmtF(Math.round(total/txList.length)):'-'}</div></div>
       </div>
-      <div style="width:100px;text-align:right;font-size:12px;font-weight:600;color:#e67e22;flex-shrink:0">${fmtF(v.disb)}</div>
-      ${v.budget>0?`<div style="width:55px;text-align:right;flex-shrink:0"><span class="pill ${p>=80?'pr':p>=50?'pw':'pg'}">${p}%</span></div>`:'<div style="width:55px"></div>'}
-    </div>`;
-  });
+      ${!divName?`<div class="dp-section">
+        <div class="dp-sec-title">แยกตามสาขา <span style="font-size:10px;font-weight:400;color:var(--muted)">คลิกเพื่อดูรายการ</span></div>
+        ${divEntries.map(([d,v])=>{const c=DC[d]||'#e67e22';const dp=pct(v.disb,grandTotal);return`<div class="dp-div-row" onclick="opSelectDiv('${d}')">
+          <div class="dp-div-dot" style="background:${c}"></div>
+          <div class="dp-div-name">${d}</div>
+          <div class="dp-div-bar"><div class="dp-div-fill" style="width:${Math.min(Math.round(v.disb/maxDiv*100),100)}%;background:${c}"></div></div>
+          <div class="dp-div-pct" style="color:${pctClr(60)}">${fmtF(v.disb)}</div>
+          <div class="dp-div-amt">${dp}% ของรวม</div>
+          <div class="dp-div-arrow" style="color:${c}">&#8594;</div>
+        </div>`;}).join('')}
+      </div>`:`<div style="margin-bottom:12px"><button onclick="opSelectDiv('')" style="font-family:Sarabun,sans-serif;font-size:12px;padding:5px 12px;border-radius:8px;border:1px solid var(--border);background:#f9fafb;cursor:pointer;color:var(--muted)">&#8592; ดูทุกสาขา</button></div>`}
+      <div class="dp-section">
+        <div class="dp-sec-title">รายการเบิกจ่าย <span style="font-size:10px;font-weight:400;color:var(--muted)">${txList.length} รายการ (แสดง ${Math.min(txList.length,50)} รายการ)</span></div>
+        <div style="overflow-x:auto;max-height:420px;overflow-y:auto">
+          <table class="tx-table">
+            <thead><tr><th>หมวด</th><th>สาขา</th><th>รายละเอียด</th><th>เจ้าของเรื่อง</th><th style="text-align:right">จำนวน (บาท)</th></tr></thead>
+            <tbody>${txRows}</tbody>
+            <tfoot><tr class="tx-total-row"><td colspan="4" style="text-align:right;padding:7px 8px">รวม ${txList.length} รายการ</td><td class="tx-amt">${fmtF(total)}</td></tr></tfoot>
+          </table>
+        </div>
+      </div>`;
 
-  let txRows='';
-  recentOp.forEach(r=>{
-    const disb=parseNum(r[9]);
-    const desc=(r[5]||'').replace(/"/g,'').trim();  // col F = รายละเอียด
-    const div=(r[1]||'').trim();                        // col B = สังกัด
-    const owner=(r[8]||'').trim();                      // col I = เจ้าของเรื่อง
-    const c=DC[div]||'#e67e22';
-    txRows+=`<tr>
-      <td style="font-size:11px;color:var(--muted)">${(r[0]||'').slice(0,20)}</td>
-      <td>${div?`<span style="background:${c}18;color:${c};padding:2px 7px;border-radius:8px;font-size:11px;font-weight:600">${div}</span>`:'-'}</td>
-      <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px" title="${desc}">${desc.length>40?desc.slice(0,40)+'…':desc}</td>
-      <td style="font-size:11px;color:var(--muted);white-space:nowrap">${owner||'-'}</td>
-      <td style="text-align:right;font-weight:700;color:#e67e22;font-size:13px">${fmtF(disb)}</td>
-    </tr>`;
-  });
+    document.getElementById('detailPanel').classList.add('open');
+    document.getElementById('overlay').classList.add('open');
+  }
 
+  window.opSelectDiv=function(d){kc('miniChart');renderOpDetail(d);};
+
+  // render หน้า
   document.getElementById('app').innerHTML=kpiHtml+`
-  <div class="card">
-    <div class="card-hd">สรุปยอดเบิกจ่ายงบดำเนินงาน แยกตามหมวดรายการ</div>
-    <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px;padding:12px 16px;background:#fff8f0;border-radius:10px;border:1px solid #fde8cc">
-      <div style="font-size:13px;color:var(--muted)">ยอดเบิกจ่ายรวม</div>
-      <div style="font-size:26px;font-weight:800;color:#e67e22">${fmtF(grandTotal)} บาท</div>
-      <div style="font-size:13px;color:var(--muted)">(${rows.filter(r=>parseNum(r[9])>0).length} รายการ)</div>
-    </div>
-    ${catRows||'<div style="text-align:center;padding:20px;color:var(--muted)">ยังไม่มีข้อมูล</div>'}
+  <!-- KPI งบดำเนินงาน -->
+  <div class="kpi-row" style="margin-bottom:18px">
+    <div class="kpi" style="border-top:3px solid #e67e22"><div class="kpi-lbl">ยอดเบิกจ่ายรวม</div><div class="kpi-v" style="color:#e67e22">${fmt(grandTotal)}</div><div class="kpi-s">${fmtF(grandTotal)} บาท</div></div>
+    <div class="kpi" style="border-top:3px solid #27ae60"><div class="kpi-lbl">จำนวนรายการ</div><div class="kpi-v" style="color:#27ae60">${disbRows.length}</div><div class="kpi-s">รายการ</div></div>
+    <div class="kpi" style="border-top:3px solid var(--primary)"><div class="kpi-lbl">สาขาที่เบิก</div><div class="kpi-v" style="color:var(--primary)">${divEntries.length}</div><div class="kpi-s">สาขา</div></div>
+    <div class="kpi" style="border-top:3px solid #7c3aed"><div class="kpi-lbl">หมวดรายการ</div><div class="kpi-v" style="color:#7c3aed">${catEntries.length}</div><div class="kpi-s">หมวด</div></div>
+    <div class="kpi" style="border-top:3px solid #0891b2"><div class="kpi-lbl">เฉลี่ยต่อรายการ</div><div class="kpi-v" style="color:#0891b2">${disbRows.length?fmt(Math.round(grandTotal/disbRows.length)):'-'}</div><div class="kpi-s">บาท</div></div>
   </div>
+
+  <!-- แถว 1: แยกสาขา + donut -->
+  <div class="g2">
+    <div class="card">
+      <div class="card-hd">ยอดเบิกจ่ายแยกตามสาขา <span style="font-size:12px;font-weight:400;color:var(--muted)">(คลิกดูรายการ)</span></div>
+      ${divEntries.map(([d,v])=>{
+        const c=DC[d]||'#e67e22';
+        return`<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;cursor:pointer;padding:8px 10px;border-radius:8px;border:1px solid transparent;transition:all .15s" onmouseover="this.style.background='#fff8f0';this.style.borderColor='${c}40'" onmouseout="this.style.background='';this.style.borderColor='transparent'" onclick="opSelectDiv('${d}')">
+          <div style="width:12px;height:12px;border-radius:3px;background:${c};flex-shrink:0"></div>
+          <div style="flex:1;font-size:13px;font-weight:600">${d}</div>
+          <div style="width:130px;flex-shrink:0"><div style="height:10px;background:#f3f4f6;border-radius:5px;overflow:hidden"><div style="height:100%;width:${Math.min(Math.round(v.disb/maxDiv*100),100)}%;background:${c};border-radius:5px"></div></div></div>
+          <div style="width:90px;text-align:right;font-size:12px;font-weight:700;color:${c};flex-shrink:0">${fmtF(v.disb)}</div>
+          <div style="font-size:12px;color:${c}">&#8594;</div>
+        </div>`;
+      }).join('')}
+      <div style="margin-top:8px;padding-top:10px;border-top:1px solid var(--border);display:flex;justify-content:space-between;font-size:13px">
+        <span style="color:var(--muted)">รวมทั้งหมด</span>
+        <strong style="color:#e67e22">${fmtF(grandTotal)} บาท</strong>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-hd">สัดส่วนตามสาขา</div>
+      <div class="chart-wrap" style="height:280px"><canvas id="opDonutChart"></canvas></div>
+    </div>
+  </div>
+
+  <!-- แถว 2: หมวดรายการ + แนวโน้มรายเดือน -->
+  <div class="g2">
+    <div class="card">
+      <div class="card-hd">ยอดเบิกแยกตามหมวดรายการ</div>
+      ${catEntries.slice(0,8).map(([cat,v])=>`
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:9px">
+          <div style="flex:1;font-size:12px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${cat}">${cat.length>28?cat.slice(0,28)+'…':cat}</div>
+          <div style="width:120px;flex-shrink:0"><div style="height:9px;background:#f3f4f6;border-radius:5px;overflow:hidden"><div style="height:100%;width:${Math.min(Math.round(v/maxCat*100),100)}%;background:#7c3aed;border-radius:5px"></div></div></div>
+          <div style="width:80px;text-align:right;font-size:12px;font-weight:600;color:#7c3aed;flex-shrink:0">${fmtF(v)}</div>
+        </div>`).join('')}
+    </div>
+    <div class="card">
+      <div class="card-hd">แนวโน้มการเบิกจ่ายรายเดือน</div>
+      <div class="chart-wrap" style="height:240px"><canvas id="opBarChart"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Top 5 + ตารางรายการล่าสุด -->
+  <div class="card" style="margin-bottom:14px">
+    <div class="card-hd">Top 5 รายการ (ยอดสูงสุด)</div>
+    ${top5.map(r=>{
+      const div=(r[1]||'').trim();const c=DC[div]||'#e67e22';
+      const desc=(r[5]||'').replace(/"/g,'').trim();
+      return`<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;padding:8px 10px;background:#fafafa;border-radius:8px;cursor:pointer" onclick="opSelectDiv('${div}')" onmouseover="this.style.background='#fff8f0'" onmouseout="this.style.background='#fafafa'">
+        <div style="width:10px;height:10px;border-radius:2px;background:${c};flex-shrink:0"></div>
+        <div style="flex:1;font-size:12px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${desc||r[0]||'-'}</div>
+        <div style="font-size:12px;color:var(--muted);flex-shrink:0">${div||'-'}</div>
+        <div style="font-size:13px;font-weight:700;color:#e67e22;flex-shrink:0">${fmtF(parseNum(r[9]))} บาท</div>
+      </div>`;
+    }).join('')}
+  </div>
+
   <div class="card">
-    <div class="card-hd">รายการเบิกจ่ายงบดำเนินงาน (Top 20 ตามจำนวนเงิน)</div>
+    <div class="card-hd">รายการเบิกจ่ายทั้งหมด <span style="font-size:12px;font-weight:400;color:var(--muted)">${disbRows.length} รายการ</span>
+      <button onclick="opSelectDiv('')" style="margin-left:auto;font-family:Sarabun,sans-serif;font-size:12px;padding:5px 14px;border-radius:8px;border:1px solid #e67e22;background:#fff8f0;color:#e67e22;cursor:pointer;font-weight:600">ดูรายละเอียด &#8594;</button>
+    </div>
     <div style="overflow-x:auto">
       <table class="dt">
-        <thead><tr><th style="text-align:left">หมวด</th><th style="text-align:left">สาขา</th><th style="text-align:left">รายละเอียด</th><th style="text-align:left">เจ้าของเรื่อง</th><th style="text-align:right">ยอดเบิก (บาท)</th></tr></thead>
-        <tbody>${txRows||'<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--muted)">ยังไม่มีรายการ</td></tr>'}</tbody>
+        <thead><tr>
+          <th style="text-align:left">หมวด</th>
+          <th style="text-align:left">สาขา</th>
+          <th style="text-align:left">รายละเอียด</th>
+          <th style="text-align:left">เจ้าของเรื่อง</th>
+          <th style="text-align:right">ยอดเบิก (บาท)</th>
+        </tr></thead>
+        <tbody>
+          ${disbRows.slice(0,10).map(r=>{
+            const div=(r[1]||'').trim();const c=DC[div]||'#e67e22';
+            const desc=(r[5]||'').replace(/"/g,'').trim();
+            const owner=(r[8]||'').trim();
+            return`<tr>
+              <td style="font-size:11px;color:var(--muted)">${(r[0]||'').slice(0,18)}</td>
+              <td>${div?`<span style="background:${c}18;color:${c};padding:2px 7px;border-radius:8px;font-size:11px;font-weight:600">${div}</span>`:'-'}</td>
+              <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px">${desc.length>45?desc.slice(0,45)+'…':desc}</td>
+              <td style="font-size:12px;color:var(--muted)">${owner||'-'}</td>
+              <td style="text-align:right;font-weight:700;color:#e67e22">${fmtF(parseNum(r[9]))}</td>
+            </tr>`;
+          }).join('')}
+        </tbody>
       </table>
     </div>
   </div>`;
+
+  // Donut chart แยกสาขา
+  kc('opDonutChart');
+  if(divEntries.length){
+    charts['opDonutChart']=new Chart(document.getElementById('opDonutChart'),{
+      type:'doughnut',
+      data:{labels:divEntries.map(([d])=>d),datasets:[{data:divEntries.map(([,v])=>v.disb),backgroundColor:divEntries.map(([d])=>DC[d]||'#e67e22'),borderWidth:2,borderColor:'#fff'}]},
+      options:{responsive:true,maintainAspectRatio:false,cutout:'55%',plugins:{legend:{position:'bottom',labels:{font:{family:'Sarabun',size:12},padding:14}},tooltip:{callbacks:{label:c=>`${c.label}: ฿${Math.round(c.raw).toLocaleString('th-TH')} (${Math.round(c.raw/grandTotal*100)}%)`}}}}
+    });
+  }
+
+  // Bar chart รายเดือน
+  kc('opBarChart');
+  if(mKeys.length){
+    charts['opBarChart']=new Chart(document.getElementById('opBarChart'),{
+      type:'bar',
+      data:{labels:mLabels,datasets:[{label:'เบิกจ่าย',data:mKeys.map(mk=>byMonth[mk].total),backgroundColor:'#e67e22',borderRadius:5,borderSkipped:false}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>'฿'+Math.round(c.raw).toLocaleString('th-TH')}}},scales:{x:{grid:{display:false},ticks:{font:{size:10,family:'Sarabun'}}},y:{grid:{color:'rgba(0,0,0,0.04)'},ticks:{font:{size:10,family:'Sarabun'},callback:v=>fmt(v)}}}}
+    });
+  }
 }
 
 function buildCodeFilter(){
