@@ -290,120 +290,77 @@ function renderOpBudget(kpiHtml){
       b[1].reduce((s,r)=>s+parseNum(r[9]),0)-a[1].reduce((s,r)=>s+parseNum(r[9]),0)
     );
     const filtTotal=fRows.reduce((s,r)=>s+parseNum(r[9]),0);
+    const maxCatVal=gEntries.length?gEntries[0][1].reduce((s,r)=>s+parseNum(r[9]),0):1;
+
+    if(!window._opExpandedCats) window._opExpandedCats=new Set();
+
     let out='';
     gEntries.forEach(([cat,txs],ci)=>{
       const cc=CAT_COLORS[ci%CAT_COLORS.length];
       const catTotal=txs.reduce((s,r)=>s+parseNum(r[9]),0);
-      out+=`<div style="margin-bottom:14px;border-radius:12px;border:1px solid ${cc}30;overflow:hidden">
-        <div style="display:flex;align-items:center;gap:10px;padding:12px 16px;background:${cc}10;border-bottom:1px solid ${cc}20">
-          <div style="width:4px;height:20px;border-radius:2px;background:${cc};flex-shrink:0"></div>
-          <div style="font-size:16px;font-weight:700;color:${cc};flex:1">${cat}</div>
-          <div style="font-size:15px;font-weight:700;color:${cc}">${fmtF(catTotal)} บาท</div>
-          <div style="font-size:13px;color:var(--muted)">(${txs.length} รายการ)</div>
+      const barW=Math.min(Math.round(catTotal/maxCatVal*100),100);
+      const pctOfTotal=filtTotal>0?Math.round(catTotal/filtTotal*100):0;
+      const isOpen=window._opExpandedCats.has(cat);
+
+      // แถวรายการ (แสดงเมื่อ open)
+      let txRows='';
+      if(isOpen){
+        txs.sort((a,b)=>parseNum(b[9])-parseNum(a[9])).forEach(r=>{
+          const div=(r[1]||'').trim();
+          const desc=(r[5]||'').replace(/"/g,'').trim();
+          const owner=(r[7]||'').trim();
+          const dc=DC[div]||'#6b7280';
+          txRows+=`<tr style="border-bottom:1px solid #f9fafb" onmouseover="this.style.background='#fafafa'" onmouseout="this.style.background=''">
+            <td style="padding:8px 16px">${div?`<span style="background:${dc}18;color:${dc};padding:3px 9px;border-radius:8px;font-size:13px;font-weight:600">${div}</span>`:'-'}</td>
+            <td style="padding:8px 16px;font-size:13px;max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${desc}">${desc.length>55?desc.slice(0,55)+'…':desc}</td>
+            <td style="padding:8px 16px;font-size:13px;color:var(--muted);white-space:nowrap">${owner||'-'}</td>
+            <td style="padding:8px 16px;text-align:right;font-weight:700;font-size:14px;color:${cc}">${fmtF(parseNum(r[9]))}</td>
+          </tr>`;
+        });
+      }
+
+      out+=`<div style="margin-bottom:12px;border-radius:12px;border:1px solid ${isOpen?cc+'60':'var(--border)'};overflow:hidden;transition:all .2s">
+        <!-- หัวหมวด คลิกได้ -->
+        <div style="display:flex;align-items:center;gap:14px;padding:14px 18px;cursor:pointer;background:${isOpen?cc+'10':'#fff'};transition:background .2s"
+          onclick="window._opExpandedCats=${isOpen?`window._opExpandedCats`:`window._opExpandedCats`};
+            if(window._opExpandedCats.has('${cat.replace(/'/g,"\\'")}'))window._opExpandedCats.delete('${cat.replace(/'/g,"\\'")}');
+            else window._opExpandedCats.add('${cat.replace(/'/g,"\\'")}');
+            renderCats()">
+          <div style="width:4px;height:22px;border-radius:2px;background:${cc};flex-shrink:0"></div>
+          <div style="font-size:15px;font-weight:700;color:${cc};flex:0 0 auto;min-width:100px">${cat}</div>
+          <!-- แท่งแสดงยอด -->
+          <div style="flex:1;height:12px;background:#f3f4f6;border-radius:6px;overflow:hidden">
+            <div style="height:100%;width:${barW}%;background:${cc};border-radius:6px;transition:width .5s"></div>
+          </div>
+          <div style="font-size:15px;font-weight:700;color:${cc};flex:0 0 auto;min-width:110px;text-align:right">${fmtF(catTotal)}</div>
+          <div style="font-size:13px;color:var(--muted);flex:0 0 auto;min-width:80px;text-align:center">${txs.length} รายการ</div>
+          <div style="font-size:13px;font-weight:600;flex:0 0 auto;min-width:45px;text-align:right"><span class="pill pg">${pctOfTotal}%</span></div>
+          <div style="font-size:16px;color:${cc};flex:0 0 auto;transition:transform .2s;transform:rotate(${isOpen?'180':'0'}deg)">▾</div>
         </div>
-        <div>
-          <table style="width:100%;border-collapse:collapse;font-size:14px">
+        <!-- รายละเอียด (collapse/expand) -->
+        ${isOpen?`<div>
+          <table style="width:100%;border-collapse:collapse">
             <thead><tr style="background:#f9fafb">
-              <th style="padding:7px 14px;text-align:left;font-size:13px;color:var(--muted);font-weight:700;border-bottom:1px solid var(--border)">สาขา</th>
-              <th style="padding:7px 14px;text-align:left;font-size:13px;color:var(--muted);font-weight:700;border-bottom:1px solid var(--border)">รายละเอียด</th>
-              <th style="padding:7px 14px;text-align:left;font-size:13px;color:var(--muted);font-weight:700;border-bottom:1px solid var(--border)">เจ้าของเรื่อง</th>
-              <th style="padding:7px 14px;text-align:right;font-size:13px;color:var(--muted);font-weight:700;border-bottom:1px solid var(--border)">ยอดเบิก (บาท)</th>
+              <th style="padding:8px 16px;text-align:left;font-size:13px;color:var(--muted);font-weight:700;border-bottom:1px solid var(--border)">สาขา</th>
+              <th style="padding:8px 16px;text-align:left;font-size:13px;color:var(--muted);font-weight:700;border-bottom:1px solid var(--border)">รายละเอียด</th>
+              <th style="padding:8px 16px;text-align:left;font-size:13px;color:var(--muted);font-weight:700;border-bottom:1px solid var(--border)">เจ้าของเรื่อง</th>
+              <th style="padding:8px 16px;text-align:right;font-size:13px;color:var(--muted);font-weight:700;border-bottom:1px solid var(--border)">ยอดเบิก (บาท)</th>
             </tr></thead>
-            <tbody>
-              ${txs.sort((a,b)=>parseNum(b[9])-parseNum(a[9])).map(r=>{
-                const div=(r[1]||'').trim();
-                const desc=(r[5]||'').replace(/"/g,'').trim();
-                const owner=(r[7]||'').trim();
-                const dc=DC[div]||'#6b7280';
-                return`<tr style="border-bottom:1px solid #f9fafb" onmouseover="this.style.background='#fafafa'" onmouseout="this.style.background=''">
-                  <td style="padding:7px 14px">${div?`<span style="background:${dc}18;color:${dc};padding:3px 9px;border-radius:8px;font-size:13px;font-weight:600">${div}</span>`:'-'}</td>
-                  <td style="padding:8px 14px;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px" title="${desc}">${desc.length>55?desc.slice(0,55)+'…':desc}</td>
-                  <td style="padding:8px 14px;color:var(--muted);font-size:13px;white-space:nowrap">${owner||'-'}</td>
-                  <td style="padding:8px 14px;text-align:right;font-weight:700;color:${cc};font-size:14px">${fmtF(parseNum(r[9]))}</td>
-                </tr>`;
-              }).join('')}
-              <tr style="background:${cc}08;border-top:2px solid ${cc}30">
-                <td colspan="3" style="padding:8px 14px;text-align:right;font-size:13px;font-weight:600;color:var(--muted)">รวม ${txs.length} รายการ</td>
-                <td style="padding:8px 14px;text-align:right;font-weight:700;color:${cc};font-size:14px">${fmtF(catTotal)}</td>
-              </tr>
-            </tbody>
+            <tbody>${txRows}</tbody>
+            <tfoot><tr style="background:${cc}08;border-top:2px solid ${cc}30">
+              <td colspan="3" style="padding:8px 16px;text-align:right;font-size:13px;font-weight:600;color:var(--muted)">รวม ${txs.length} รายการ</td>
+              <td style="padding:8px 16px;text-align:right;font-weight:700;font-size:15px;color:${cc}">${fmtF(catTotal)}</td>
+            </tr></tfoot>
           </table>
-        </div>
+        </div>`:''}
       </div>`;
     });
-    if(!out)out='<div style="text-align:center;padding:30px;color:var(--muted);font-size:14px">ไม่มีรายการที่ตรงกับเงื่อนไข</div>';
+
+    if(!out)out='<div class="card" style="text-align:center;padding:30px;color:var(--muted);font-size:14px">ไม่มีรายการที่ตรงกับเงื่อนไข</div>';
     document.getElementById('op-cats').innerHTML=out;
     document.getElementById('op-info').textContent=`${fRows.length} รายการ | รวม ${fmtF(filtTotal)} บาท`;
   }
 
-  // division cards เหมือนโครงการ
-  let divCards2='';
-  divEntries.forEach(([d,v])=>{
-    const c=DC[d]||'#e67e22';
-    const bg=DC_BG2[d]||'#fff8f0';
-    const txt=DC_TXT2[d]||'#2d1a0e';
-    const p2=Math.min(Math.round(v.disb/grandTotal*100),100);
-    divCards2+=`<div style="border-radius:12px;padding:16px;border:1px solid ${c}40;background:${bg};color:${txt}">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
-        <div style="width:32px;height:32px;border-radius:8px;background:${c};color:#fff;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;flex-shrink:0">${d.charAt(0)}</div>
-        <span style="font-size:14px;font-weight:700">${d}</span>
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px">
-        <div style="font-size:11px;opacity:.75">ยอดเบิก</div><div style="font-size:14px;font-weight:700;text-align:right;color:${c}">${fmt(v.disb)}</div>
-        <div style="font-size:11px;opacity:.75">จำนวนรายการ</div><div style="font-size:14px;font-weight:700;text-align:right">${v.txs.length}</div>
-        <div style="font-size:11px;opacity:.75">สัดส่วนรวม</div><div style="font-size:14px;font-weight:700;text-align:right">${p2}%</div>
-        <div style="font-size:11px;opacity:.75">เฉลี่ย/รายการ</div><div style="font-size:14px;font-weight:700;text-align:right">${v.txs.length?fmt(Math.round(v.disb/v.txs.length)):'-'}</div>
-      </div>
-      <div style="height:10px;background:rgba(255,255,255,0.5);border-radius:5px;overflow:hidden;margin-bottom:4px">
-        <div style="height:100%;width:${p2}%;background:${c};border-radius:5px"></div>
-      </div>
-      <div style="font-size:12px;font-weight:700;text-align:right;color:${c}">${p2}% ของยอดรวม</div>
-    </div>`;
-  });
-
-  // รายการแยกสาขา (เหมือนโครงการแยกตามสาขา)
-  let divTxSections='';
-  divEntries.forEach(([d,v])=>{
-    const c=DC[d]||'#e67e22';
-    if(!v.txs.length)return;
-    const catGroups={};
-    v.txs.forEach(r=>{
-      const cat=(r[0]||'อื่นๆ').trim()||'อื่นๆ';
-      if(!catGroups[cat])catGroups[cat]=[];
-      catGroups[cat].push(r);
-    });
-    const cgEntries=Object.entries(catGroups).sort((a,b)=>
-      b[1].reduce((s,r)=>s+parseNum(r[9]),0)-a[1].reduce((s,r)=>s+parseNum(r[9]),0)
-    );
-    divTxSections+=`<div class="card">
-      <div class="card-hd" style="color:${c};margin-bottom:12px">
-        <span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:${c};margin-right:8px;vertical-align:middle"></span>
-        ${d} <span style="font-size:12px;font-weight:400;color:var(--muted)">(${v.txs.length} รายการ | ${fmtF(v.disb)} บาท)</span>
-      </div>
-      ${cgEntries.map(([cat,txs],ci)=>{
-        const cc=CAT_COLORS[ci%CAT_COLORS.length];
-        const catTotal=txs.reduce((s,r)=>s+parseNum(r[9]),0);
-        return`<div style="margin-bottom:10px;border-radius:8px;border:1px solid ${cc}25;overflow:hidden">
-          <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:${cc}10;font-size:12px;font-weight:700;color:${cc}">
-            <span>${cat}</span><span style="margin-left:auto">${fmtF(catTotal)} บาท (${txs.length} รายการ)</span>
-          </div>
-          <table style="width:100%;border-collapse:collapse;font-size:14px">
-            <tbody>
-              ${txs.sort((a,b)=>parseNum(b[9])-parseNum(a[9])).map(r=>{
-                const desc=(r[5]||'').replace(/"/g,'').trim();
-                const owner=(r[7]||'').trim();
-                return`<tr style="border-bottom:1px solid #f9fafb" onmouseover="this.style.background='#fafafa'" onmouseout="this.style.background=''">
-                  <td style="padding:6px 14px;max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${desc}">${desc.length>60?desc.slice(0,60)+'…':desc}</td>
-                  <td style="padding:6px 14px;color:var(--muted);font-size:11px;white-space:nowrap">${owner||'-'}</td>
-                  <td style="padding:6px 14px;text-align:right;font-weight:700;color:${cc};white-space:nowrap">${fmtF(parseNum(r[9]))}</td>
-                </tr>`;
-              }).join('')}
-            </tbody>
-          </table>
-        </div>`;
-      }).join('')}
-    </div>`;
-  });
 
   document.getElementById('app').innerHTML=kpiHtml+`
   <!-- KPI -->
