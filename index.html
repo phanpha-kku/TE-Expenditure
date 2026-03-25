@@ -261,18 +261,28 @@ async function loadSheets(){
     projActual={};allTx=[];
     rawRows.slice(1).forEach(row=>{
       if(!row[0]||!row[0].trim())return;
-      const rawCode=row[0].trim().split(' ')[0].replace(/-\d+$/,'');
+      // ดึงรหัส 6 หลักจาก col A (เช่น "121131ซ่อมแซมครุภัณฑ์" -> "121131")
+      const rawFull=row[0].trim();
+      const codeMatch=rawFull.match(/^(\d{6})/);
+      if(!codeMatch)return;
+      const rawCode=codeMatch[1];
       const div=(row[2]||'').trim();
       if(div&&!VALID_DIVS.has(div))return; // กรอง div ที่ไม่ใช่สาขาจริง
-      const disb=parseNum(row[10]);
-      const appr=parseNum(row[9]);
+      const disb=parseNum(row[10]);  // คอลัมน์ K = ยอดเบิกจริง
+      const appr=parseNum(row[9]);   // คอลัมน์ J = ยอดขออนุมัติ
       if(disb<0||disb>10000000)return; // กรองค่าผิดปกติ
-      const dtRaw=row[11]||row[5]||'';
+      if(appr<0||appr>50000000)return;
+      // ใช้ยอด "เบิก" ถ้ามี ไม่งั้นใช้ยอด "ขออนุมัติ"
+      const amt=disb>0?disb:appr;
+      if(amt<=0)return; // ข้ามรายการที่ไม่มีทั้งสองค่า
+      // วันที่: ถ้าเบิกแล้วใช้วันที่เบิก (col L) ไม่งั้นใช้วันที่บันทึก (col F)
+      const dtRaw=disb>0?(row[11]||row[5]||''):(row[5]||'');
       const dt=new Date(dtRaw);
-      const dateStr=!isNaN(dt)?dt.toLocaleDateString('th-TH',{day:'2-digit',month:'short',year:'2-digit'}):'';
+      const dateStr=!isNaN(dt)&&dt.getFullYear()>2000?dt.toLocaleDateString('th-TH',{day:'2-digit',month:'short',year:'2-digit'}):'';
       const monthKey=!isNaN(dt)&&dt.getFullYear()>2000?dt.getFullYear()+'-'+(dt.getMonth()+1).toString().padStart(2,'0'):'';
+      const status=disb>0?'เบิกแล้ว':appr>0?'อนุมัติแล้ว':'';
       if(!projActual[rawCode])projActual[rawCode]={total:0,appr:0,divs:{},months:{}};
-      projActual[rawCode].total+=disb;
+      projActual[rawCode].total+=disb; // total = เบิกจริงเท่านั้น
       projActual[rawCode].appr+=appr;
       if(div){
         if(!projActual[rawCode].divs[div])projActual[rawCode].divs[div]={disb:0,appr:0,txs:[]};
@@ -283,13 +293,11 @@ async function loadSheets(){
         if(!projActual[rawCode].months[monthKey])projActual[rawCode].months[monthKey]=0;
         projActual[rawCode].months[monthKey]+=disb;
       }
-      // เก็บ transaction ทุกรายการที่มีการเบิก
-      if(disb>0){
-        const tx={code:rawCode,div,disb,appr,date:dateStr,monthKey,desc:(row[6]||'').replace(/"/g,'').trim(),owner:(row[8]||'').trim()};
-        allTx.push(tx);
-        if(div&&projActual[rawCode].divs[div]){
-          projActual[rawCode].divs[div].txs.push(tx);
-        }
+      // เก็บ transaction ทุกรายการที่มีขออนุมัติหรือเบิก
+      const tx={code:rawCode,div,disb,appr,amt,status,date:dateStr,monthKey,desc:(row[6]||'').replace(/"/g,'').trim(),owner:(row[8]||'').trim()};
+      allTx.push(tx);
+      if(div&&projActual[rawCode].divs[div]){
+        projActual[rawCode].divs[div].txs.push(tx);
       }
     });
     document.getElementById('lupd').textContent='อัพเดต '+new Date().toLocaleTimeString('th-TH');
@@ -529,7 +537,7 @@ function openDetail(code, filterDiv){
     });
 
     // Transaction table
-    let txList=allTx.filter(t=>t.code===code&&t.disb>0);
+    let txList=allTx.filter(t=>t.code===code&&(t.disb>0||t.appr>0));
     if(activeDivTab) txList=txList.filter(t=>t.div===activeDivTab);
     txList.sort((a,b)=>{
       if(a.monthKey&&b.monthKey)return b.monthKey.localeCompare(a.monthKey);
@@ -539,15 +547,27 @@ function openDetail(code, filterDiv){
     let txRows='';
     txList.forEach(t=>{
       const c=DC[t.div]||'#6b7280';
+      const isDisb=t.disb>0;
+      const stClr=isDisb?'#059669':'#d97706';
+      const stBg=isDisb?'#d1fae5':'#fef3c7';
+      const stTxt=isDisb?'เบิกแล้ว':'รออนุมัติ';
+      const showAmt=isDisb?t.disb:t.appr;
       txRows+=`<tr>
         <td class="tx-date">${t.date||'-'}</td>
         <td><span class="tx-div-badge" style="background:${c}18;color:${c}">${t.div||'-'}</span></td>
-        <td class="tx-desc" title="${t.desc}">${t.desc.length>55?t.desc.slice(0,55)+'…':t.desc}</td>
-        <td class="tx-amt">${fmtF(t.disb)}</td>
+        <td class="tx-desc" title="${t.desc}">${t.desc.length>50?t.desc.slice(0,50)+'…':t.desc}</td>
+        <td style="text-align:center"><span style="font-size:11px;padding:2px 8px;border-radius:10px;font-weight:700;background:${stBg};color:${stClr};white-space:nowrap">${stTxt}</span></td>
+        <td class="tx-amt" style="color:${isDisb?'#059669':'#d97706'}">${fmtF(showAmt)}</td>
       </tr>`;
     });
     if(txList.length>0){
-      txRows+=`<tr class="tx-total-row"><td colspan="3" style="text-align:right;padding:7px 8px">รวมทั้งหมด (${txList.length} รายการ)</td><td class="tx-amt">${fmtF(txTotal)}</td></tr>`;
+      const disbTotal=txList.reduce((s,t)=>s+(t.disb||0),0);
+      const apprOnly=txList.reduce((s,t)=>s+(t.disb>0?0:(t.appr||0)),0);
+      txRows+=`<tr class="tx-total-row">
+        <td colspan="3" style="text-align:right;padding:7px 8px">รวม ${txList.length} รายการ &nbsp;|&nbsp; <span style="color:#059669">เบิกแล้ว: ${fmtF(disbTotal)} บาท</span> &nbsp;|&nbsp; <span style="color:#d97706">รออนุมัติ: ${fmtF(apprOnly)} บาท</span></td>
+        <td></td>
+        <td class="tx-amt">${fmtF(disbTotal+apprOnly)}</td>
+      </tr>`;
     }
 
     // Mini monthly chart data
@@ -590,10 +610,10 @@ function openDetail(code, filterDiv){
       ${mKeys.length?`<div class="dp-section"><div class="dp-sec-title">แนวโน้มรายเดือน${activeDivTab?' ('+activeDivTab+')':''}</div><div style="position:relative;height:150px"><canvas id="miniChart"></canvas></div></div>`:''}
       <div class="dp-section">
         <div class="dp-sec-title">
-          รายการเบิกจ่าย${activeDivTab?' — สาขา '+activeDivTab:' (ทุกสาขา)'}
+          รายการขออนุมัติ/เบิกจ่าย${activeDivTab?' — สาขา '+activeDivTab:' (ทุกสาขา)'}
           <span style="font-size:10px;font-weight:400;color:var(--muted)">${txList.length} รายการ</span>
         </div>
-        ${txRows?`<div style="overflow-x:auto;max-height:400px;overflow-y:auto"><table class="tx-table"><thead><tr><th>วันที่</th><th>สาขา</th><th>รายละเอียด</th><th style="text-align:right">จำนวน (บาท)</th></tr></thead><tbody>${txRows}</tbody></table></div>`:'<div style="text-align:center;padding:20px;color:var(--muted);font-size:12px">ยังไม่มีรายการเบิกจ่าย</div>'}
+        ${txRows?`<div style="overflow-x:auto;max-height:400px;overflow-y:auto"><table class="tx-table"><thead><tr><th>วันที่</th><th>สาขา</th><th>รายละเอียด</th><th style="text-align:center">สถานะ</th><th style="text-align:right">จำนวน (บาท)</th></tr></thead><tbody>${txRows}</tbody></table></div>`:'<div style="text-align:center;padding:20px;color:var(--muted);font-size:12px">ยังไม่มีรายการเบิกจ่าย</div>'}
       </div>`;
 
     if(mKeys.length){
