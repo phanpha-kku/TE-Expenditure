@@ -157,33 +157,6 @@ table.dt tr:hover td{background:#fafafa}
   </div>
 </div>
 
-<div class="fbar">
-  <label>รหัสโครงการ:</label>
-  <select class="fs" id="fCode" onchange="applyFilter()" style="min-width:220px"><option value="">&#8212; ทุกโครงการ &#8212;</option></select>
-  <label>สาขา:</label>
-  <select class="fs" id="fDiv" onchange="applyFilter()">
-    <option value="">&#8212; ทุกสาขา &#8212;</option>
-    <option>สำนักงาน</option><option>ธรณี</option><option>ชีวภาพ</option>
-    <option>อาหาร</option><option>ผลิต</option><option>ประกอบอาหาร</option>
-  </select>
-  <label>สถานะ:</label>
-  <select class="fs" id="fAlert" onchange="applyFilter()">
-    <option value="">ทุกสถานะ</option>
-    <option value="over80">ใกล้เต็มงบ (&gt;80%)</option>
-    <option value="over50">ใช้ไปเกิน 50%</option>
-    <option value="under20">ยังใช้น้อย (&lt;20%)</option>
-  </select>
-  <label>เรียง:</label>
-  <select class="fs" id="fSort" onchange="applyFilter()">
-    <option value="code">รหัส</option>
-    <option value="pct-desc">% ใช้งบ มาก&#8594;น้อย</option>
-    <option value="pct-asc">% ใช้งบ น้อย&#8594;มาก</option>
-    <option value="budget-desc">งบมาก&#8594;น้อย</option>
-    <option value="actual-desc">เบิกมาก&#8594;น้อย</option>
-  </select>
-  <button class="fbtn" onclick="clearFilters()">&#10005; ล้าง</button>
-  <span class="cnt" id="cnt-badge"></span>
-</div>
 
 <div class="tabs">
   <button class="tab active" onclick="switchTab(0,this)">&#128200; ภาพรวม</button>
@@ -555,12 +528,12 @@ function renderOpBudget(kpiHtml){
 
 
 function buildCodeFilter(){
-  const fc=document.getElementById('fCode');const cur=fc.value;
+  const fc=document.getElementById('fCode');if(!fc)return;const cur=fc.value;
   fc.innerHTML='<option value="">&#8212; ทุกโครงการ &#8212;</option>';
   BUDGET_DATA.forEach(p=>{const o=document.createElement('option');o.value=p.code;o.textContent=p.code+' - '+(p.name.length>28?p.name.slice(0,28)+'…':p.name);fc.appendChild(o);});
   if(cur)fc.value=cur;
 }
-function clearFilters(){['fCode','fDiv','fAlert'].forEach(id=>document.getElementById(id).value='');document.getElementById('fSort').value='code';applyFilter();}
+function clearFilters(){['fCode','fDiv','fAlert','fSort'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=(id==='fSort'?'code':'');});applyFilter();}
 function applyFilter(){renderAll();}
 
 function parseCSV(txt){
@@ -641,26 +614,12 @@ async function loadSheets(){
 }
 
 function getFilteredData(){
-  const fCode=document.getElementById('fCode').value;
-  const fDiv=document.getElementById('fDiv').value;
-  const fAlert=document.getElementById('fAlert').value;
-  const fSort=document.getElementById('fSort').value;
+  // ไม่มี global filter แล้ว — แต่ละหน้ากรองเอง
   let data=BUDGET_DATA.map(p=>{
     const act=projActual[p.code]||{total:0,appr:0,divs:{},months:{}};
-    let budget=p.budget,actual=act.total;
-    if(fDiv){budget=p.divs_budget[fDiv]||0;actual=act.divs[fDiv]?act.divs[fDiv].disb:0;}
-    return{...p,showBudget:budget,showActual:actual,usePct:pct(actual,budget),divsActual:act.divs,months:act.months};
+    return{...p,showBudget:p.budget,showActual:act.total,usePct:pct(act.total,p.budget),divsActual:act.divs,months:act.months};
   });
-  if(fCode)data=data.filter(p=>p.code===fCode);
-  if(fDiv)data=data.filter(p=>p.showBudget>0);
-  if(fAlert==='over80')data=data.filter(p=>p.usePct>=80);
-  else if(fAlert==='over50')data=data.filter(p=>p.usePct>=50);
-  else if(fAlert==='under20')data=data.filter(p=>p.usePct<20&&p.showBudget>0);
-  if(fSort==='code')data.sort((a,b)=>a.code.localeCompare(b.code));
-  else if(fSort==='pct-desc')data.sort((a,b)=>b.usePct-a.usePct);
-  else if(fSort==='pct-asc')data.sort((a,b)=>a.usePct-b.usePct);
-  else if(fSort==='budget-desc')data.sort((a,b)=>b.showBudget-a.showBudget);
-  else if(fSort==='actual-desc')data.sort((a,b)=>b.showActual-a.showActual);
+  data.sort((a,b)=>a.code.localeCompare(b.code));
   return data;
 }
 
@@ -671,7 +630,7 @@ function renderAll(){
   const over80=data.filter(p=>p.usePct>=80).length;
   const under20=data.filter(p=>p.usePct<20&&p.showBudget>0).length;
   const totalP=pct(totalA,totalB);
-  document.getElementById('cnt-badge').textContent=data.length+' โครงการ';
+  // cnt-badge removed with filter bar
   const kpiHtml=`<div class="kpi-row">
     <div class="kpi c-blue"><div class="kpi-lbl">งบตั้งไว้รวม</div><div class="kpi-v">${fmt(totalB)}</div><div class="kpi-s">${fmtF(totalB)} บาท</div></div>
     <div class="kpi c-green"><div class="kpi-lbl">เบิกจ่ายแล้ว</div><div class="kpi-v">${fmt(totalA)}</div><span class="pill ${pctCls(totalP)}">${totalP}% ของงบ</span></div>
@@ -730,36 +689,47 @@ function renderOverview(kpiHtml,data){
     </div>`;
   });
 
-  // -- โครงการแยกตามสาขา --
-  let divProjSections='';
-  Object.entries(divSum).forEach(([d])=>{
-    const c=DC[d]||'#6b7280';
-    const projs=data.filter(p=>p.divs_budget[d]);
-    if(!projs.length)return;
-    divProjSections+=`<div class="card">
-      <div class="card-hd" style="color:${c};margin-bottom:12px">
-        <span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:${c};margin-right:8px;vertical-align:middle"></span>
-        ${d} <span style="font-size:12px;font-weight:400;color:var(--muted)">(${projs.length} โครงการ | คลิกดูรายการเบิก)</span>
-      </div>
-      ${projs.map(p=>{
-        const db=p.divs_budget[d]||0;
-        const da=p.divsActual&&p.divsActual[d]?p.divsActual[d].disb:0;
-        const dp=pct(da,db);
-        return`<div style="display:flex;align-items:center;gap:10px;margin-bottom:9px;cursor:pointer;padding:7px 10px;border-radius:8px;border:1px solid transparent;transition:all .15s" onmouseover="this.style.background='#f9fafb';this.style.borderColor='${c}30'" onmouseout="this.style.background='';this.style.borderColor='transparent'" onclick="openDetail('${p.code}','${d}')">
-          <div style="width:62px;font-size:12px;font-weight:700;color:var(--primary);flex-shrink:0">${p.code}</div>
-          <div style="flex:1;font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${p.name}">${p.name}</div>
-          <div style="width:130px;flex-shrink:0">
-            <div style="height:8px;background:#f3f4f6;border-radius:4px;overflow:hidden">
-              <div style="height:100%;width:${Math.min(dp,100)}%;background:${c};border-radius:4px"></div>
-            </div>
-          </div>
-          <div style="width:95px;text-align:right;font-size:12px;flex-shrink:0">${fmtF(da)}<span style="color:var(--muted)">/${fmtF(db)}</span></div>
-          <div style="width:42px;text-align:right;font-size:12px;font-weight:700;color:${pctClr(dp)};flex-shrink:0">${dp}%</div>
-          <div style="color:${c};font-size:13px;flex-shrink:0">&#8594;</div>
-        </div>`;
-      }).join('')}
-    </div>`;
-  });
+  // filter state สำหรับโครงการ (global)
+  window._pFDiv=''; window._pFCode='';
+
+  function renderDivProjs(){
+    const fData=data.filter(p=>{
+      if(window._pFCode&&p.code!==window._pFCode)return false;
+      if(window._pFDiv&&!p.divs_budget[window._pFDiv])return false;
+      return true;
+    });
+    let out='';
+    Object.entries(divSum).forEach(([d])=>{
+      const c=DC[d]||'#6b7280';
+      let projs=fData.filter(p=>p.divs_budget[d]);
+      if(window._pFDiv&&d!==window._pFDiv)return;
+      if(!projs.length)return;
+      out+=`<div class="card">
+        <div class="card-hd" style="color:${c};margin-bottom:12px">
+          <span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:${c};margin-right:8px;vertical-align:middle"></span>
+          ${d} <span style="font-size:12px;font-weight:400;color:var(--muted)">(${projs.length} โครงการ | คลิกดูรายการเบิก)</span>
+        </div>
+        ${projs.map(p=>{
+          const db=p.divs_budget[d]||0;
+          const da=p.divsActual&&p.divsActual[d]?p.divsActual[d].disb:0;
+          const dp=pct(da,db);
+          return`<div style="display:flex;align-items:center;gap:10px;margin-bottom:9px;cursor:pointer;padding:7px 10px;border-radius:8px;border:1px solid transparent;transition:all .15s" onmouseover="this.style.background='#f9fafb';this.style.borderColor='${c}30'" onmouseout="this.style.background='';this.style.borderColor='transparent'" onclick="openDetail('${p.code}','${d}')">
+            <div style="width:62px;font-size:12px;font-weight:700;color:var(--primary);flex-shrink:0">${p.code}</div>
+            <div style="flex:1;font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.name}</div>
+            <div style="width:130px;flex-shrink:0"><div style="height:8px;background:#f3f4f6;border-radius:4px;overflow:hidden"><div style="height:100%;width:${Math.min(dp,100)}%;background:${c};border-radius:4px"></div></div></div>
+            <div style="width:95px;text-align:right;font-size:12px;flex-shrink:0">${fmtF(da)}<span style="color:var(--muted)">/${fmtF(db)}</span></div>
+            <div style="width:42px;text-align:right;font-size:12px;font-weight:700;color:${pctClr(dp)};flex-shrink:0">${dp}%</div>
+            <div style="color:${c};font-size:13px;flex-shrink:0">&#8594;</div>
+          </div>`;
+        }).join('')}
+      </div>`;
+    });
+    if(!out)out='<div class="card" style="text-align:center;padding:30px;color:var(--muted);font-size:14px">ไม่มีโครงการที่ตรงกับเงื่อนไข</div>';
+    document.getElementById('proj-div-list').innerHTML=out;
+    document.getElementById('proj-filter-info').textContent=fData.length+' โครงการ';
+  }
+  window.renderDivProjs=renderDivProjs;
+
 
   document.getElementById('app').innerHTML=kpiHtml+`
   <!-- สรุปตารางสาขา + donut -->
@@ -796,11 +766,30 @@ function renderOverview(kpiHtml,data){
     <span style="display:block;width:5px;height:20px;background:var(--primary);border-radius:3px"></span>
     โครงการแยกตามสาขา
   </div>
-  ${divProjSections}`;
+
+  <!-- Filter -->
+  <div style="background:#fff;border-radius:12px;border:1px solid var(--border);padding:14px 18px;margin-bottom:14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+    <span style="font-size:13px;font-weight:700;color:var(--muted)">กรองโครงการ:</span>
+    <select id="pf-code" class="fs" onchange="window._pFCode=this.value;renderDivProjs()" style="min-width:220px">
+      <option value="">&#8212; ทุกโครงการ &#8212;</option>
+      ${BUDGET_DATA.map(p=>`<option value="${p.code}">${p.code} - ${p.name.length>28?p.name.slice(0,28)+'…':p.name}</option>`).join('')}
+    </select>
+    <select id="pf-div" class="fs" onchange="window._pFDiv=this.value;renderDivProjs()" style="min-width:140px">
+      <option value="">&#8212; ทุกสาขา &#8212;</option>
+      ${[...VALID_DIVS].map(d=>`<option value="${d}">${d}</option>`).join('')}
+    </select>
+    <button onclick="window._pFDiv='';window._pFCode='';['pf-div','pf-code'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=''});renderDivProjs()" class="fbtn">&#10005; ล้าง</button>
+    <span id="proj-filter-info" style="font-size:12px;color:var(--primary);background:#fde8e8;padding:3px 10px;border-radius:20px;font-weight:600"></span>
+  </div>
+
+  <div id="proj-div-list"></div>`;
 
   kc('donutChart');
   const de=Object.entries(divSum).filter(([,v])=>v.b>0);
   if(de.length){charts['donutChart']=new Chart(document.getElementById('donutChart'),{type:'doughnut',data:{labels:de.map(([d])=>d),datasets:[{data:de.map(([,v])=>v.b),backgroundColor:de.map(([d])=>DC[d]||'#6b7280'),borderWidth:2,borderColor:'#fff'}]},options:{responsive:true,maintainAspectRatio:false,cutout:'55%',plugins:{legend:{position:'bottom',labels:{font:{family:'Sarabun',size:12},padding:14}},tooltip:{callbacks:{label:c=>`${c.label}: ฿${Math.round(c.raw).toLocaleString('th-TH')}`}}}}});}
+  // reset filter และ render
+  window._pFDiv='';window._pFCode='';
+  renderDivProjs();
 }
 
 function renderDivisions(kpiHtml,data){
@@ -882,10 +871,7 @@ function renderTrend(kpiHtml,data){
   const monthDiv={};
   allTx.forEach(tx=>{
     if(!tx.monthKey||tx.disb<=0)return;
-    const fDiv=document.getElementById('fDiv').value;
-    const fCode=document.getElementById('fCode').value;
-    if(fDiv&&tx.div!==fDiv)return;
-    if(fCode&&tx.code!==fCode)return;
+    // filter bar ถูกลบแล้ว - trend แสดงข้อมูลทั้งหมด
     if(!monthDiv[tx.div])monthDiv[tx.div]={};
     if(!monthDiv[tx.div][tx.monthKey])monthDiv[tx.div][tx.monthKey]=0;
     monthDiv[tx.div][tx.monthKey]+=tx.disb;
